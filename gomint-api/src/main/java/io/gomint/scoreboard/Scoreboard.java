@@ -21,7 +21,7 @@ public interface Scoreboard {
      * @param objectiveName which should be used
      * @param displayName   of the slot
      */
-    ScoreboardDisplay addDisplay( DisplaySlot slot, String objectiveName, String displayName );
+    ScoreboardDisplay addDisplay(DisplaySlot slot, String objectiveName, String displayName);
 
     /**
      * Add a new display slot to this scoreboard with a sort order
@@ -31,7 +31,7 @@ public interface Scoreboard {
      * @param displayName   of the slot
      * @param sortOrder     which sorts the ids
      */
-    ScoreboardDisplay addDisplay( DisplaySlot slot, String objectiveName, String displayName, SortOrder sortOrder );
+    ScoreboardDisplay addDisplay(DisplaySlot slot, String objectiveName, String displayName, SortOrder sortOrder);
 
     /**
      * Get a display from its slot
@@ -39,13 +39,13 @@ public interface Scoreboard {
      * @param slot for the display
      * @return the display or null when no display has been added to this slot
      */
-    ScoreboardDisplay display( DisplaySlot slot );
+    ScoreboardDisplay display(DisplaySlot slot);
 
     /**
      * Remove a display
      *
      * @param slot which should be removed
      */
-    Scoreboard removeDisplay( DisplaySlot slot );
+    Scoreboard removeDisplay(DisplaySlot slot);
 
 }

@@ -7,16 +7,27 @@
 
 package io.gomint.plugin;
 
+import com.google.common.collect.ImmutableSet;
 import io.gomint.GoMint;
 import io.gomint.command.Command;
+import io.gomint.entity.EntityPlayer;
+import io.gomint.event.Event;
 import io.gomint.event.EventListener;
+import io.gomint.event.interfaces.WorldEvent;
 import io.gomint.scheduler.Scheduler;
+import io.gomint.world.World;
 import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import javax.annotation.Nullable;
 
 /**
  * Base class for any plugin to be created for use with the GoMint system. Below you will find an in-depth
@@ -45,6 +56,7 @@ import java.util.List;
  * </ol>
  *
  * @author BlackyPaw
+ * @author Janmm14
  * @version 1.0
  * @stability 3
  */
@@ -83,6 +95,12 @@ public class Plugin {
     GoMint server;
 
     /**
+     * Configured loaded active worlds
+     */
+    @Nullable
+    ConcurrentHashMap.KeySetView<String, Boolean> activeLoadedWorlds;
+
+    /**
      * List which contains all listeners this plugin has registered
      */
     private final List<EventListener> listeners = new ArrayList<>();
@@ -115,8 +133,8 @@ public class Plugin {
      *
      * @return Plugin installation status
      */
-    public boolean isInstalled() {
-        return this.pluginManager.isPluginInstalled( this.name );
+    public final boolean isInstalled() {
+        return this.pluginManager.isPluginInstalled(this.name);
     }
 
     /**
@@ -124,19 +142,46 @@ public class Plugin {
      *
      * @param command which should be registered
      */
-    public Plugin registerCommand( Command command ) {
-        this.pluginManager.registerCommand( this, command );
+    public final Plugin registerCommand(Command command) {
+        this.pluginManager.registerCommand(this, command);
         return this;
     }
 
     /**
-     * Register a new listener to this plugin
+     * Register a new event listener for this plugin.
+     * <br><br>
+     * Events implementing {@linkplain io.gomint.event.interfaces.WorldEvent WorldEvent} will be filtered, it will only
+     * be called for events taking place in worlds which {@linkplain World#folder() folder name} is present in the
+     * {@code worlds.yml} configuration.
      *
      * @param listener The listener which should be registered
+     * @see #eventInActiveWorlds(Event)
+     * @see #registerListener(EventListener, Predicate)
+     * @since 2.0
      */
-    public Plugin registerListener( EventListener listener ) {
-        this.pluginManager.registerListener( this, listener );
-        this.listeners.add( listener );
+    public final Plugin registerListener(EventListener listener) {
+        this.pluginManager.registerListener(this, listener);
+        this.listeners.add(listener);
+        return this;
+    }
+
+    /**
+     * Register a new event listener for this plugin with an additional event filter.
+     * <br><br>
+     * Events implementing {@linkplain io.gomint.event.interfaces.WorldEvent WorldEvent} will be filtered, it will only
+     * be called for events taking place in worlds which {@linkplain World#folder() folder name} is present in the
+     * {@code worlds.yml} configuration.
+     *
+     * @param listener  The listener which should be registered
+     * @param predicate The predicate allows you to filter events. Events where the predicate returns {@code false} are
+     *                  not forwarded to the actual listener. {@code null} means that only the default active world
+     *                  filtering will be done.
+     * @see #registerListener(EventListener)
+     * @since 2.0
+     */
+    public final Plugin registerListener(EventListener listener, Predicate<Event> predicate) {
+        this.pluginManager.registerListener(this, listener, predicate);
+        this.listeners.add(listener);
         return this;
     }
 
@@ -145,9 +190,9 @@ public class Plugin {
      *
      * @param listener which should be unregistered
      */
-    public Plugin unregisterListener( EventListener listener ) {
-        if ( this.listeners.remove( listener ) ) {
-            this.pluginManager.unregisterListener( this, listener );
+    public final Plugin unregisterListener(EventListener listener) {
+        if (this.listeners.remove(listener)) {
+            this.pluginManager.unregisterListener(this, listener);
         }
 
         return this;
@@ -157,8 +202,8 @@ public class Plugin {
      * Disables the plugin if - and only if - the plugin is currently in the runtime stage.
      * Under all other circumstances invocation of this method will show no effect.
      */
-    protected void uninstall() {
-        this.pluginManager.uninstallPlugin( this );
+    protected final void uninstall() {
+        this.pluginManager.uninstallPlugin(this);
     }
 
     /**
@@ -169,8 +214,8 @@ public class Plugin {
      * @return the stream for getting this resource, or null if it does not
      * exist
      */
-    public final InputStream resourceAsStream(String name ) {
-        return getClass().getClassLoader().getResourceAsStream( name );
+    public final InputStream resourceAsStream(String name) {
+        return getClass().getClassLoader().getResourceAsStream(name);
     }
 
     /**
@@ -179,31 +224,105 @@ public class Plugin {
      * @return the data folder of this plugin
      */
     public final File dataFolder() {
-        return new File( pluginManager().baseDirectory(), name() );
+        return new File(pluginManager().baseDirectory(), name());
     }
 
-    public PluginManager pluginManager() {
+    public final PluginManager pluginManager() {
         return this.pluginManager;
     }
 
-    public String name() {
+    public final String name() {
         return this.name;
     }
 
-    public PluginVersion version() {
+    public final PluginVersion version() {
         return this.version;
     }
 
-    public Logger logger() {
+    public final Logger logger() {
         return this.logger;
     }
 
-    public Scheduler scheduler() {
+    public final Scheduler scheduler() {
         return this.scheduler;
     }
 
-    public GoMint server() {
+    public final GoMint server() {
         return this.server;
+    }
+
+    /**
+     * Get a snapshot copy of loaded worlds (by {@linkplain World#folder()} name) based on {@code worlds.yml}
+     * configuration file in this plugin's data folder.
+     * <br>
+     * <b>Do not save the result for later checking.</b>
+     * <br>It only contains names of worlds which are currently loaded. In most cases it is enough to use
+     * {@linkplain #activeInWorld(World)}, that method is also faster.
+     * <br><br>
+     * Returns {@code null} if plugin should run in all worlds.
+     *
+     * @return The set of currently loaded worlds (by {@linkplain World#folder()} name) the given plugin should be
+     * active in. Returns {@code null} if plugin should run in all worlds.
+     * @see #activeInWorld(World)
+     * @see #eventInActiveWorlds(Event)
+     */
+    @Nullable
+    public final Set<String> activeWorldsSnapshot() {
+        return this.activeLoadedWorlds == null ? null : ImmutableSet.copyOf(this.activeLoadedWorlds);
+    }
+
+    /**
+     * Checks whether the plugin should be active in the given world. Based on {@code worlds.yml} configuration file in
+     * this plugin's data folder.
+     *
+     * @param world The world to check
+     * @return whether the plugin should be active in the given world
+     * @see #activeWorldsSnapshot()
+     * @see #eventInActiveWorlds(Event)
+     */
+    public final boolean activeInWorld(World world) {
+        return this.activeLoadedWorlds == null || this.activeLoadedWorlds.contains(world.folder());
+    }
+
+    /**
+     * Checks whether given event is no {@linkplain WorldEvent} or if the event happens is in a world this plugin is
+     * configured to be active in.
+     *
+     * @param event the event to check
+     * @return {@code true} - event is no {@linkplain WorldEvent}<br>
+     * {@code true} - event is {@linkplain WorldEvent} and plugin is configured to be active in it's world<br>
+     * {@code false} - otherwise (event is {@linkplain WorldEvent} and plugin is configured to <b>not</b> be active in
+     * it's world)
+     * @see #activeWorldsSnapshot()
+     * @see #activeInWorld(World)
+     */
+    public final boolean eventInActiveWorlds(Event event) {
+        if (!(event instanceof WorldEvent)) {
+            return true;
+        }
+        return activeInWorld(((WorldEvent) event).world());
+    }
+
+    /**
+     * Get a collection of all players in worlds this plugin is active in
+     *
+     * @return collection of players in plugin's active worlds
+     * @see GoMint#activeWorldsPlayers(Plugin)
+     */
+    public final Collection<EntityPlayer> activeWorldsPlayers() {
+        return this.server.activeWorldsPlayers(this);
+    }
+
+    /**
+     * Schedules iteration of players in this plugin's active worlds in their world's thread.
+     *
+     * @param playerConsumer the consumer which will get called on each world's thread with every player of the world
+     * @return this plugin for chaining
+     * @see GoMint#activeWorldsPlayers(Plugin, Consumer)
+     */
+    public final Plugin activeWorldsPlayers(Consumer<EntityPlayer> playerConsumer) {
+        this.server.activeWorldsPlayers(this, playerConsumer);
+        return this;
     }
 
 }

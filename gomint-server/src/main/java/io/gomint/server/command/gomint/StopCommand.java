@@ -21,9 +21,9 @@ public class StopCommand extends Command {
 
     // Player execution
     @Override
-    public CommandOutput execute(CommandSender<?> server, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> server, String alias, Map<String, Object> arguments, CommandOutput output) {
         GoMint.instance().shutdown();
-        return CommandOutput.successful("§7[§aSYSTEM§7] §fServer will be stopped");
+        output.success("§7[§aSYSTEM§7] §fServer will be stopped");
     }
 
 }

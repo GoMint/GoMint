@@ -65,12 +65,12 @@ public class LevelDBChunkAdapter extends ChunkAdapter {
     public LevelDBChunkAdapter(WorldAdapter worldAdapter, int x, int z, boolean populated) {
         super(worldAdapter, x, z);
         this.populated(populated);
-        this.loadedTime = this.lastSavedTimestamp = worldAdapter.server().currentTickTime();
+        this.loadedTime = this.lastSavedTimestamp = worldAdapter.currentTickTime();
     }
 
     public LevelDBChunkAdapter(WorldAdapter worldAdapter, int x, int z) {
         super(worldAdapter, x, z);
-        this.loadedTime = worldAdapter.server().currentTickTime();
+        this.loadedTime = worldAdapter.currentTickTime();
     }
 
     void save(DB db) {

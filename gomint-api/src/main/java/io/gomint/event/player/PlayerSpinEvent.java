@@ -25,4 +25,13 @@ public class PlayerSpinEvent extends CancellablePlayerEvent<PlayerSpinEvent> {
         return this.newStatus;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerSpinEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", newStatus=" + this.newStatus +
+            '}';
+    }
+
 }

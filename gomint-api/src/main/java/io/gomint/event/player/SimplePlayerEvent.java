@@ -15,7 +15,7 @@ import io.gomint.event.interfaces.PlayerEvent;
  * Represents a not cancellable event with a player involved
  *
  * @author geNAZt
- * @version 2.0
+ * @version 1.0
  * @stability 2
  */
 public class SimplePlayerEvent extends Event implements PlayerEvent {
@@ -35,6 +35,13 @@ public class SimplePlayerEvent extends Event implements PlayerEvent {
     @Override
     public EntityPlayer player() {
         return this.player;
+    }
+
+    @Override
+    public String toString() {
+        return "SimplePlayerEvent{" +
+            "player=" + this.player +
+            '}';
     }
 
 }

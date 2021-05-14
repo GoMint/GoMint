@@ -36,4 +36,12 @@ public class CancellableEntityEvent<E> extends CancellableEvent<E> implements En
         return this.entity;
     }
 
+    @Override
+    public String toString() {
+        return "CancellableEntityEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity +
+            '}';
+    }
+
 }

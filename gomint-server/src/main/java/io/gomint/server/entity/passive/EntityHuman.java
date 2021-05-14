@@ -611,7 +611,7 @@ public class EntityHuman<E extends Entity<E>> extends EntityCreature<E> implemen
         PacketEntityMetadata metadata = new PacketEntityMetadata();
         metadata.setEntityId(this.id());
         metadata.setMetadata(this.metadataContainer);
-        metadata.setTick(this.world.server().currentTickTime() / (int) Values.CLIENT_TICK_MS);
+        metadata.setTick(this.world.currentTickTime() / (int) Values.CLIENT_TICK_MS);
         connection.addToSendQueue(metadata);
 
         PacketPlayerlist packetPlayerlist = new PacketPlayerlist();
@@ -660,7 +660,7 @@ public class EntityHuman<E extends Entity<E>> extends EntityCreature<E> implemen
 
         packetMovePlayer.setOnGround(this.onGround());
         packetMovePlayer.setMode(PacketMovePlayer.MovePlayerMode.NORMAL);
-        packetMovePlayer.setTick(this.world.server().currentTickTime() / (int) Values.CLIENT_TICK_MS);
+        packetMovePlayer.setTick(this.world.currentTickTime() / (int) Values.CLIENT_TICK_MS);
 
         return packetMovePlayer;
     }

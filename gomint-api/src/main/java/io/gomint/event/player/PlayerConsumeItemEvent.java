@@ -39,4 +39,13 @@ public class PlayerConsumeItemEvent extends CancellablePlayerEvent<PlayerConsume
         return this.itemStack;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerConsumeItemEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", itemStack=" + this.itemStack +
+            '}';
+    }
+
 }

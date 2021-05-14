@@ -8,11 +8,11 @@
 package io.gomint.server.network;
 
 import io.gomint.ChatColor;
-import io.gomint.GoMint;
 import io.gomint.crypto.Processor;
 import io.gomint.event.player.PlayerCleanedupEvent;
 import io.gomint.event.player.PlayerKickEvent;
 import io.gomint.event.player.PlayerQuitEvent;
+import io.gomint.event.player.PlayerWorldLeaveEvent;
 import io.gomint.jraknet.Connection;
 import io.gomint.jraknet.EncapsulatedPacket;
 import io.gomint.jraknet.PacketBuffer;
@@ -48,6 +48,7 @@ import io.gomint.server.network.packet.PacketWorldTime;
 import io.gomint.server.util.Cache;
 import io.gomint.server.util.EnumConnectors;
 import io.gomint.server.util.Pair;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.util.StringUtil;
 import io.gomint.server.util.Values;
 import io.gomint.server.world.ChunkAdapter;
@@ -254,12 +255,7 @@ public class PlayerConnection implements ConnectionWithState {
      *
      * @param packet The packet which should be queued
      */
-    public void addToSendQueue(Packet packet) {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Add packet async to send queue - canceling sending", new Exception());
-            return;
-        }
-
+    public synchronized void addToSendQueue(Packet packet) {
         if (!this.connection.isConnected()) {
             return;
         }
@@ -358,7 +354,7 @@ public class PlayerConnection implements ConnectionWithState {
         }
     }
 
-    private void releaseSendQueue() {
+    private synchronized void releaseSendQueue() {
         // Send all queued packets
 
         if (this.sendQueue != null && !this.sendQueue.isEmpty()) {
@@ -457,7 +453,7 @@ public class PlayerConnection implements ConnectionWithState {
 
             this.state = PlayerConnectionState.PLAYING;
 
-            this.entity.loginPerformance().setChunkEnd(this.entity.world().server().currentTickTime());
+            this.entity.loginPerformance().setChunkEnd(this.entity.world().currentTickTime());
             this.entity.loginPerformance().print();
         }
     }
@@ -805,12 +801,12 @@ public class PlayerConnection implements ConnectionWithState {
     public void disconnect(String message) {
         this.networkManager.server().pluginManager().callEvent(new PlayerKickEvent(this.entity, message));
 
-        if (message != null && message.length() > 0) {
+        if (message != null && !message.isEmpty()) {
             PacketDisconnect packet = new PacketDisconnect();
             packet.setMessage(message);
             this.send(packet);
 
-            this.server.executorService().schedule(() -> PlayerConnection.this.internalClose(message), 3, TimeUnit.SECONDS);
+            this.server.asyncScheduler().scheduleAsync(() -> PlayerConnection.this.internalClose(message), 3, TimeUnit.SECONDS);
         } else {
             this.internalClose(message);
         }
@@ -859,7 +855,7 @@ public class PlayerConnection implements ConnectionWithState {
         move.setMode(MovePlayerMode.TELEPORT);
         move.setOnGround(this.entity().onGround());
         move.setRidingEntityId(0);    // TODO: Implement riding entities correctly
-        move.setTick(this.entity.world().server().currentTickTime() / (int) Values.CLIENT_TICK_MS);
+        move.setTick(this.entity.world().currentTickTime() / (int) Values.CLIENT_TICK_MS);
         this.addToSendQueue(move);
     }
 
@@ -923,10 +919,11 @@ public class PlayerConnection implements ConnectionWithState {
     /**
      * The underlying RakNet Connection closed. Cleanup
      */
-    void close() {
+    public void close() {
         LOGGER.info("Player {} disconnected", this.entity);
 
         if (this.entity != null && this.entity.world() != null) {
+            this.networkManager.server().pluginManager().callEvent(new PlayerWorldLeaveEvent(this.entity, null));
             PlayerQuitEvent event = this.networkManager.server().pluginManager().callEvent(new PlayerQuitEvent(this.entity, ChatColor.YELLOW + this.entity.displayName() + " left the game."));
             if (event.quitMessage() != null && !event.quitMessage().isEmpty()) {
                 this.server().onlinePlayers().forEach((player) -> {

@@ -33,4 +33,12 @@ public class InventoryCloseEvent extends SimplePlayerEvent {
         return this.inventory;
     }
 
+    @Override
+    public String toString() {
+        return "InventoryCloseEvent{" +
+            "player=" + this.player() +
+            ", inventory=" + this.inventory +
+            '}';
+    }
+
 }

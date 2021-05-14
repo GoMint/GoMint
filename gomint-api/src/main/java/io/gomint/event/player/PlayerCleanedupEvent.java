@@ -28,4 +28,11 @@ public class PlayerCleanedupEvent extends SimplePlayerEvent {
         super(player);
     }
 
+    @Override
+    public String toString() {
+        return "PlayerCleanedupEvent{" +
+            "player=" + this.player() +
+            '}';
+    }
+
 }

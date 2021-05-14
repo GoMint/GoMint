@@ -132,12 +132,12 @@ public final class ReportUploader {
 
         this.context.put("config.server", server.serverConfig());
 
-        if (this.worlds.size() > 0) {
-            this.worlds.forEach((worldName, worldData) -> context.put("world." + worldName, worldData));
+        if (!this.worlds.isEmpty()) {
+            this.worlds.forEach((worldName, worldData) -> this.context.put("world." + worldName, worldData));
         }
 
-        if (this.players.size() > 0) {
-            this.players.forEach((playerName, playerData) -> context.put("player." + playerName, playerData));
+        if (!this.players.isEmpty()) {
+            this.players.forEach((playerName, playerData) -> this.context.put("player." + playerName, playerData));
         }
 
         // Check for plugin crashes

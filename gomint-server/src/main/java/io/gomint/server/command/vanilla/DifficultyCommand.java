@@ -28,9 +28,10 @@ import java.util.Map;
 public class DifficultyCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         if (!(sender instanceof PlayerCommandSender)) {
-            return CommandOutput.failure("Executor is required to be a player");
+            output.fail("Executor is required to be a player");
+            return;
         }
 
         String difficultyDegree = String.valueOf(arguments.get("difficulty"));
@@ -54,13 +55,14 @@ public class DifficultyCommand extends Command {
                 difficulty = Difficulty.HARD;
                 break;
             default:
-                return CommandOutput.failure(String.format("No such difficulty degree: %s", difficultyDegree));
+                output.fail(String.format("No such difficulty degree: %s", difficultyDegree));
+                return;
         }
 
         EntityPlayer executor = (EntityPlayer) sender;
         executor.world().difficulty(difficulty);
 
-        return CommandOutput.successful(String.format("Set game difficulty to %s", difficulty.name()));
+        output.success(String.format("Set game difficulty to %s", difficulty.name()));
     }
 
 }

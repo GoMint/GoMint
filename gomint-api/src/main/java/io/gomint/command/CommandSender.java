@@ -8,6 +8,9 @@
 package io.gomint.command;
 
 import io.gomint.player.ChatType;
+import io.gomint.world.World;
+
+import javax.annotation.Nullable;
 
 /**
  * @author geNAZt
@@ -48,5 +51,13 @@ public interface CommandSender<E> {
      * assigned that permission either way
      */
     boolean hasPermission(String permission, boolean defaultValue);
+
+    /**
+     * Gets the world this command sender resides in. Is {@code null} for {@linkplain ConsoleCommandSender}
+     *
+     * @return The world this command sender resides in or {@code null} for {@linkplain ConsoleCommandSender}
+     */
+    @Nullable
+    World world();
 
 }

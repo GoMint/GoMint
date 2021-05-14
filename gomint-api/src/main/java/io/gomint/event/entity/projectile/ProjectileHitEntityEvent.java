@@ -40,4 +40,13 @@ public class ProjectileHitEntityEvent extends CancellableEntityEvent<ProjectileH
         return this.projectile;
     }
 
+    @Override
+    public String toString() {
+        return "ProjectileHitEntityEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", projectile=" + this.projectile +
+            '}';
+    }
+
 }

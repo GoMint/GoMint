@@ -16,10 +16,11 @@ import io.gomint.gui.Modal;
 import io.gomint.inventory.item.ItemStack;
 import io.gomint.permission.GroupManager;
 import io.gomint.player.PlayerSkin;
+import io.gomint.plugin.Plugin;
 import io.gomint.plugin.PluginManager;
 import io.gomint.scoreboard.Scoreboard;
-import io.gomint.world.World;
 import io.gomint.world.Chunk;
+import io.gomint.world.World;
 import io.gomint.world.block.Block;
 import io.gomint.world.generator.ChunkGeneratorRegistry;
 import io.gomint.world.generator.CreateOptions;
@@ -27,15 +28,17 @@ import io.gomint.world.generator.CreateOptions;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * @author BlackyPaw
  * @author geNAZt
+ * @author Janmm14
  * @version 1.0
- * @stability 3
+ * @stability 2
  */
 public interface GoMint {
-    
+
     /**
      * Get the GoMint server instance currently running
      *
@@ -49,6 +52,7 @@ public interface GoMint {
      * Set a new default world for this server
      *
      * @param world which should be used as default one
+     * @return GoMint for chaining
      */
     GoMint changeDefaultWorld(World world);
 
@@ -63,6 +67,7 @@ public interface GoMint {
      * Sets the server's message of the day (MOTD)
      *
      * @param motd The MOTD to be set
+     * @return GoMint for chaining
      */
     GoMint motd(String motd);
 
@@ -103,8 +108,8 @@ public interface GoMint {
      * Create a new enchantment with the given level
      *
      * @param enchantmentClass which should be used to create
-     * @param level which the enchantment should have
-     * @param <T> generic type of the enchantment
+     * @param level            which the enchantment should have
+     * @param <T>              generic type of the enchantment
      * @return fresh generated enchantment with the level given
      */
     <T extends Enchantment> T createEnchantment(Class<T> enchantmentClass, int level);
@@ -117,7 +122,7 @@ public interface GoMint {
      * @return fresh generated entity
      */
     <T extends Entity<T>> T createEntity(Class<T> entityClass);
-    
+
     /**
      * Create a new itemstack with the given item in it
      *
@@ -169,9 +174,10 @@ public interface GoMint {
     World defaultWorld();
 
     /**
-     * Dispatch a command as console
+     * Dispatch a command as console. Will be scheduled on console thread if current thread is not console thread.
      *
-     * @param command which should be executed (without the /)
+     * @param command which should be executed (without the leading {@code /})
+     * @return GoMint for chaining
      */
     GoMint dispatchCommand(String command);
 
@@ -197,20 +203,13 @@ public interface GoMint {
      * @return the player or null if not found
      */
     EntityPlayer findPlayerByUUID(UUID target);
-    
+
     /**
      * Get the manager which manages permission groups
      *
      * @return permission group manager
      */
     GroupManager groupManager();
-
-    /**
-     * Check if current thread is GoMints main thread
-     *
-     * @return true if main thread, false if not
-     */
-    boolean mainThread();
 
     /**
      * Get the amount of player which will fit on this server before it start declining logins
@@ -230,8 +229,47 @@ public interface GoMint {
      * Get a collection of all players on this server
      *
      * @return collection of online players
+     * @see #onlinePlayers(Consumer)
+     * @see #activeWorldsPlayers(Plugin)
+     * @see #activeWorldsPlayers(Plugin, Consumer)
      */
     Collection<EntityPlayer> onlinePlayers();
+
+    /**
+     * Schedules iteration of all players in their world's thread.
+     *
+     * @param playerConsumer the consumer which will get called on each world's thread with every player of the world
+     * @return GoMint for chaining
+     * @see #onlinePlayers()
+     * @see #activeWorldsPlayers(Plugin)
+     * @see #activeWorldsPlayers(Plugin, Consumer)
+     */
+    GoMint onlinePlayers(Consumer<EntityPlayer> playerConsumer);
+
+    /**
+     * Get a collection of all players in worlds the given plugin is active
+     *
+     * @param plugin the plugin those active worlds to use
+     * @return collection of players in plugin's active worlds
+     * @see Plugin#activeWorldsPlayers()
+     * @see #onlinePlayers()
+     * @see #onlinePlayers(Consumer)
+     * @see #activeWorldsPlayers(Plugin, Consumer)
+     */
+    Collection<EntityPlayer> activeWorldsPlayers(Plugin plugin);
+
+    /**
+     * Schedules iteration of players in plugin's active worlds in their world's thread.
+     *
+     * @param plugin         the plugin those active worlds to use
+     * @param playerConsumer the consumer which will get called on each world's thread with every player of the world
+     * @return GoMint for chaining
+     * @see Plugin#activeWorldsPlayers(Consumer)
+     * @see #onlinePlayers()
+     * @see #onlinePlayers(Consumer)
+     * @see #activeWorldsPlayers(Plugin)
+     */
+    GoMint activeWorldsPlayers(Plugin plugin, Consumer<EntityPlayer> playerConsumer);
 
     /**
      * Get the plugin manager
@@ -248,14 +286,23 @@ public interface GoMint {
     int port();
 
     /**
-     * Shutdown this server
+     * Schedule shutdown of this server
+     *
+     * @return GoMint for chaining
      */
     GoMint shutdown();
 
     /**
-     * Get current tickrate
+     * Get if this server is running or if a shutdown was initiated
      *
-     * @return tickrate of this server
+     * @return <ul><li>{@code true} - server is running</li><li>{@code false} - server shutdown initiated</li></ul>
+     */
+    boolean isRunning();
+
+    /**
+     * Get curent tickrate of server list status, login and console commands thread
+     *
+     * @return tickrate of server list status, login and console commands thread
      */
     double tps();
 
@@ -273,7 +320,7 @@ public interface GoMint {
      * @return the world or null if there was a error loading it
      */
     World world(String name);
-    
+
     /**
      * Get a collection of all worlds on this server
      *

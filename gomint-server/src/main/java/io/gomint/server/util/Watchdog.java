@@ -8,7 +8,6 @@
 package io.gomint.server.util;
 
 import io.gomint.server.GoMintServer;
-import io.gomint.server.maintenance.ReportUploader;
 import it.unimi.dsi.fastutil.longs.Long2LongMap;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -19,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -35,7 +35,7 @@ public class Watchdog implements Runnable {
         this.watchdogMap = new Long2LongOpenHashMap();
         this.removed = new Long2LongOpenHashMap();
 
-        server.executorService().scheduleAtFixedRate(this, 0, 10, TimeUnit.MILLISECONDS);
+        server.asyncScheduler().scheduleAsync(this, 0, 10, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -49,11 +49,30 @@ public class Watchdog implements Runnable {
                 // Get the threads stack
                 ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
                 ThreadInfo threadInfo = threadMXBean.getThreadInfo(entry.getLongKey(), 10);
-
-                LOGGER.warn("Thread did not work in time: {} (#{})", threadInfo.getThreadName(), threadInfo.getThreadId());
-                LOGGER.warn("Status: {}", threadInfo.getThreadState());
-                for (StackTraceElement element : threadInfo.getStackTrace()) {
-                    LOGGER.warn("  {}", element);
+                if (threadInfo == null) {
+                    handling: {
+                        for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+                            Thread thread = e.getKey();
+                            if (thread.getId() == entry.getLongKey()) {
+                                LOGGER.warn("Thread did not work in time and not found in ThreadMXBean: {} (#{})",
+                                    thread.getName(), thread.getId());
+                                LOGGER.warn("Status: {}", thread.getState());
+                                for (StackTraceElement element : e.getValue()) {
+                                    LOGGER.warn("  {}", element);
+                                }
+                                break handling;
+                            }
+                        }
+                        LOGGER.warn("Thread did not work in time, but is dead now: id = #{}, lastMillis = {}", entry.getLongKey(),
+                            entry.getLongValue());
+                    }
+                } else {
+                    LOGGER.warn("Thread did not work in time: {} (#{})", threadInfo.getThreadName(),
+                        threadInfo.getThreadId());
+                    LOGGER.warn("Status: {}", threadInfo.getThreadState());
+                    for (StackTraceElement element : threadInfo.getStackTrace()) {
+                        LOGGER.warn("  {}", element);
+                    }
                 }
 
                 if (removeSet[0] == null) {

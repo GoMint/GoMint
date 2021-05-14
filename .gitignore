@@ -9,6 +9,11 @@ logs/
 server.yml
 ### GoMint Debug Files END ############################# 
 
+### GoMint Release folder START #############################
+release/modules
+release/world
+release/.backtrace.io
+### GoMint Release folder END ############################# 
 
 ### Visual Studio Code START ############################# 
 .vscode/

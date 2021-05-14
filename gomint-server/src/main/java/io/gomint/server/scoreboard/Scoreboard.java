@@ -35,75 +35,75 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
     private Set<EntityPlayer> viewers = new HashSet<>();
 
     // Displays
-    private Map<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> displays = new EnumMap<>( DisplaySlot.class );
+    private Map<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> displays = new EnumMap<>(DisplaySlot.class);
 
     @Override
-    public io.gomint.scoreboard.ScoreboardDisplay addDisplay( DisplaySlot slot, String objectiveName, String displayName ) {
-        return this.addDisplay( slot, objectiveName, displayName, SortOrder.ASCENDING );
+    public synchronized io.gomint.scoreboard.ScoreboardDisplay addDisplay(DisplaySlot slot, String objectiveName, String displayName) {
+        return this.addDisplay(slot, objectiveName, displayName, SortOrder.ASCENDING);
     }
 
     @Override
-    public io.gomint.scoreboard.ScoreboardDisplay addDisplay( DisplaySlot slot, String objectiveName, String displayName, SortOrder sortOrder ) {
-        io.gomint.scoreboard.ScoreboardDisplay scoreboardDisplay = this.displays.get( slot );
-        if ( scoreboardDisplay == null ) {
-            scoreboardDisplay = new ScoreboardDisplay( this, objectiveName, displayName, sortOrder );
-            this.displays.put( slot, scoreboardDisplay );
+    public synchronized io.gomint.scoreboard.ScoreboardDisplay addDisplay(DisplaySlot slot, String objectiveName, String displayName, SortOrder sortOrder) {
+        io.gomint.scoreboard.ScoreboardDisplay scoreboardDisplay = this.displays.get(slot);
+        if (scoreboardDisplay == null) {
+            scoreboardDisplay = new ScoreboardDisplay(this, objectiveName, displayName, sortOrder);
+            this.displays.put(slot, scoreboardDisplay);
 
-            this.broadcast( this.constructDisplayPacket( slot, scoreboardDisplay ) );
+            this.broadcast(this.constructDisplayPacket(slot, scoreboardDisplay));
         }
 
         return scoreboardDisplay;
     }
 
     @Override
-    public io.gomint.scoreboard.ScoreboardDisplay display(DisplaySlot slot ) {
-        return this.displays.get( slot );
+    public synchronized io.gomint.scoreboard.ScoreboardDisplay display(DisplaySlot slot) {
+        return this.displays.get(slot);
     }
 
     @Override
-    public Scoreboard removeDisplay( DisplaySlot slot ) {
-        io.gomint.scoreboard.ScoreboardDisplay display = this.displays.remove( slot );
-        if ( display != null ) {
+    public synchronized Scoreboard removeDisplay(DisplaySlot slot) {
+        io.gomint.scoreboard.ScoreboardDisplay display = this.displays.remove(slot);
+        if (display != null) {
             // Remove all scores on this display
             LongList validScoreIDs = new LongArrayList();
 
             // Map fake entries first
             Long2ObjectMap.FastEntrySet<ScoreboardLine> fastSet = (Long2ObjectMap.FastEntrySet<ScoreboardLine>) this.scoreboardLines.long2ObjectEntrySet();
             ObjectIterator<Long2ObjectMap.Entry<ScoreboardLine>> fastIterator = fastSet.fastIterator();
-            while ( fastIterator.hasNext() ) {
+            while (fastIterator.hasNext()) {
                 Long2ObjectMap.Entry<ScoreboardLine> entry = fastIterator.next();
-                if ( entry.getValue().objective.equals( display.objective() ) ) {
-                    validScoreIDs.add( entry.getLongKey() );
+                if (entry.getValue().objective.equals(display.objective())) {
+                    validScoreIDs.add(entry.getLongKey());
                 }
             }
 
             // Remove all scores
-            for ( long scoreID : validScoreIDs ) {
-                this.scoreboardLines.remove( scoreID );
+            for (long scoreID : validScoreIDs) {
+                this.scoreboardLines.remove(scoreID);
             }
 
-            this.broadcast( this.constructRemoveScores( validScoreIDs ) );
+            this.broadcast(this.constructRemoveScores(validScoreIDs));
 
             // Now get rid of the objective
-            this.broadcast( this.constructRemoveDisplayPacket( display ) );
+            this.broadcast(this.constructRemoveDisplayPacket(display));
         }
 
         return this;
     }
 
-    private Packet constructDisplayPacket( DisplaySlot slot, io.gomint.scoreboard.ScoreboardDisplay display ) {
+    private Packet constructDisplayPacket(DisplaySlot slot, io.gomint.scoreboard.ScoreboardDisplay display) {
         PacketSetObjective packetSetObjective = new PacketSetObjective();
-        packetSetObjective.setCriteriaName( "dummy" );
-        packetSetObjective.setDisplayName( display.display() );
-        packetSetObjective.setObjectiveName( display.objective() );
-        packetSetObjective.setDisplaySlot( slot.name().toLowerCase() );
-        packetSetObjective.setSortOrder( display.sortOrder().ordinal() );
+        packetSetObjective.setCriteriaName("dummy");
+        packetSetObjective.setDisplayName(display.display());
+        packetSetObjective.setObjectiveName(display.objective());
+        packetSetObjective.setDisplaySlot(slot.name().toLowerCase());
+        packetSetObjective.setSortOrder(display.sortOrder().ordinal());
         return packetSetObjective;
     }
 
-    private void broadcast( Packet packet ) {
-        for ( EntityPlayer viewer : this.viewers ) {
-            viewer.connection().addToSendQueue( packet );
+    private void broadcast(Packet packet) {
+        for (EntityPlayer viewer : this.viewers) {
+            viewer.connection().addToSendQueue(packet);
         }
     }
 
@@ -114,24 +114,24 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
      * @param objective to which this line should be added
      * @param score     which should be given to that line
      */
-    long addOrUpdateLine( String line, String objective, int score ) {
+    synchronized long addOrUpdateLine(String line, String objective, int score) {
         // Check if we already have this registered
         Long2ObjectMap.FastEntrySet<ScoreboardLine> fastEntrySet = (Long2ObjectMap.FastEntrySet<ScoreboardLine>) this.scoreboardLines.long2ObjectEntrySet();
         ObjectIterator<Long2ObjectMap.Entry<ScoreboardLine>> fastIterator = fastEntrySet.fastIterator();
-        while ( fastIterator.hasNext() ) {
+        while (fastIterator.hasNext()) {
             Long2ObjectMap.Entry<ScoreboardLine> entry = fastIterator.next();
-            if ( entry.getValue().type == 3 && entry.getValue().fakeName.equals( line ) && entry.getValue().objective.equals( objective ) ) {
+            if (entry.getValue().type == 3 && entry.getValue().fakeName.equals(line) && entry.getValue().objective.equals(objective)) {
                 return entry.getLongKey();
             }
         }
 
         // Add this score
         long newId = this.scoreIdCounter++;
-        ScoreboardLine scoreboardLine = new ScoreboardLine( (byte) 3, 0, line, objective, score );
-        this.scoreboardLines.put( newId, scoreboardLine );
+        ScoreboardLine scoreboardLine = new ScoreboardLine((byte) 3, 0, line, objective, score);
+        this.scoreboardLines.put(newId, scoreboardLine);
 
         // Broadcast entry
-        this.broadcast( this.constructSetScore( newId, scoreboardLine ) );
+        this.broadcast(this.constructSetScore(newId, scoreboardLine));
         return newId;
     }
 
@@ -142,52 +142,52 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
      * @param objective which should be used
      * @param score     which should be used to register
      */
-    long addOrUpdateEntity( Entity<?> entity, String objective, int score ) {
+    synchronized long addOrUpdateEntity(Entity<?> entity, String objective, int score) {
         // Check if we already have this registered
         Long2ObjectMap.FastEntrySet<ScoreboardLine> fastEntrySet = (Long2ObjectMap.FastEntrySet<ScoreboardLine>) this.scoreboardLines.long2ObjectEntrySet();
         ObjectIterator<Long2ObjectMap.Entry<ScoreboardLine>> fastIterator = fastEntrySet.fastIterator();
-        while ( fastIterator.hasNext() ) {
+        while (fastIterator.hasNext()) {
             Long2ObjectMap.Entry<ScoreboardLine> entry = fastIterator.next();
-            if ( entry.getValue().entityId == entity.id() && entry.getValue().objective.equals( objective ) ) {
+            if (entry.getValue().entityId == entity.id() && entry.getValue().objective.equals(objective)) {
                 return entry.getLongKey();
             }
         }
 
         // Add this score
         long newId = this.scoreIdCounter++;
-        ScoreboardLine scoreboardLine = new ScoreboardLine( (byte) ( ( entity instanceof EntityPlayer ) ? 1 : 2 ), entity.id(), "", objective, score );
-        this.scoreboardLines.put( newId, scoreboardLine );
+        ScoreboardLine scoreboardLine = new ScoreboardLine((byte) ((entity instanceof EntityPlayer) ? 1 : 2), entity.id(), "", objective, score);
+        this.scoreboardLines.put(newId, scoreboardLine);
 
         // Broadcast entry
-        this.broadcast( this.constructSetScore( newId, scoreboardLine ) );
+        this.broadcast(this.constructSetScore(newId, scoreboardLine));
 
         return newId;
     }
 
-    private Packet constructSetScore( long newId, ScoreboardLine line ) {
+    private Packet constructSetScore(long newId, ScoreboardLine line) {
         PacketSetScore packetSetScore = new PacketSetScore();
-        packetSetScore.setType( (byte) 0 );
+        packetSetScore.setType((byte) 0);
 
         packetSetScore.setEntries(new ArrayList<>() {{
             add(new PacketSetScore.ScoreEntry(newId, line.objective, line.score, line.type, line.fakeName, line.entityId));
-        }} );
+        }});
 
         return packetSetScore;
     }
 
     private Packet constructSetScore() {
         PacketSetScore packetSetScore = new PacketSetScore();
-        packetSetScore.setType( (byte) 0 );
+        packetSetScore.setType((byte) 0);
 
         List<PacketSetScore.ScoreEntry> entries = new ArrayList<>();
         Long2ObjectMap.FastEntrySet<ScoreboardLine> fastEntrySet = (Long2ObjectMap.FastEntrySet<ScoreboardLine>) this.scoreboardLines.long2ObjectEntrySet();
         ObjectIterator<Long2ObjectMap.Entry<ScoreboardLine>> fastIterator = fastEntrySet.fastIterator();
-        while ( fastIterator.hasNext() ) {
+        while (fastIterator.hasNext()) {
             Long2ObjectMap.Entry<ScoreboardLine> entry = fastIterator.next();
-            entries.add( new PacketSetScore.ScoreEntry( entry.getLongKey(), entry.getValue().objective, entry.getValue().score, entry.getValue().type, entry.getValue().fakeName, entry.getValue().entityId ) );
+            entries.add(new PacketSetScore.ScoreEntry(entry.getLongKey(), entry.getValue().objective, entry.getValue().score, entry.getValue().type, entry.getValue().fakeName, entry.getValue().entityId));
         }
 
-        packetSetScore.setEntries( entries );
+        packetSetScore.setEntries(entries);
         return packetSetScore;
     }
 
@@ -196,15 +196,15 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
      *
      * @param player which should be shown this scoreboard
      */
-    public void showFor( EntityPlayer player ) {
-        if ( this.viewers.add( player ) ) {
+    public synchronized void showFor(EntityPlayer player) {
+        if (this.viewers.add(player)) {
             // We send display information first
-            for ( Map.Entry<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> entry : this.displays.entrySet() ) {
-                player.connection().addToSendQueue( this.constructDisplayPacket( entry.getKey(), entry.getValue() ) );
+            for (Map.Entry<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> entry : this.displays.entrySet()) {
+                player.connection().addToSendQueue(this.constructDisplayPacket(entry.getKey(), entry.getValue()));
             }
 
             // Send scores
-            player.connection().addToSendQueue( this.constructSetScore() );
+            player.connection().addToSendQueue(this.constructSetScore());
         }
     }
 
@@ -213,69 +213,69 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
      *
      * @param player which wants this scoreboard removed
      */
-    public void hideFor( EntityPlayer player ) {
-        if ( this.viewers.remove( player ) ) {
+    public synchronized void hideFor(EntityPlayer player) {
+        if (this.viewers.remove(player)) {
             // Remove all known scores
             LongList validScoreIDs = new LongArrayList();
 
             // Map fake entries first
             Long2ObjectMap.FastEntrySet<ScoreboardLine> fastSet = (Long2ObjectMap.FastEntrySet<ScoreboardLine>) this.scoreboardLines.long2ObjectEntrySet();
             ObjectIterator<Long2ObjectMap.Entry<ScoreboardLine>> fastIterator = fastSet.fastIterator();
-            while ( fastIterator.hasNext() ) {
-                validScoreIDs.add( fastIterator.next().getLongKey() );
+            while (fastIterator.hasNext()) {
+                validScoreIDs.add(fastIterator.next().getLongKey());
             }
 
             // Remove all scores
-            player.connection().addToSendQueue( this.constructRemoveScores( validScoreIDs ) );
+            player.connection().addToSendQueue(this.constructRemoveScores(validScoreIDs));
 
             // Remove all known displays
-            for ( Map.Entry<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> entry : this.displays.entrySet() ) {
-                player.connection().addToSendQueue( this.constructRemoveDisplayPacket( entry.getValue() ) );
+            for (Map.Entry<DisplaySlot, io.gomint.scoreboard.ScoreboardDisplay> entry : this.displays.entrySet()) {
+                player.connection().addToSendQueue(this.constructRemoveDisplayPacket(entry.getValue()));
             }
         }
     }
 
-    private Packet constructRemoveScores( LongList scoreIDs ) {
+    private Packet constructRemoveScores(LongList scoreIDs) {
         PacketSetScore packetSetScore = new PacketSetScore();
-        packetSetScore.setType( (byte) 1 );
+        packetSetScore.setType((byte) 1);
 
         List<PacketSetScore.ScoreEntry> entries = new ArrayList<>();
-        for ( long scoreID : scoreIDs ) {
-            entries.add( new PacketSetScore.ScoreEntry( scoreID, "", 0 ) );
+        for (long scoreID : scoreIDs) {
+            entries.add(new PacketSetScore.ScoreEntry(scoreID, "", 0));
         }
 
-        packetSetScore.setEntries( entries );
+        packetSetScore.setEntries(entries);
         return packetSetScore;
     }
 
-    private Packet constructRemoveDisplayPacket( io.gomint.scoreboard.ScoreboardDisplay display ) {
+    private Packet constructRemoveDisplayPacket(io.gomint.scoreboard.ScoreboardDisplay display) {
         PacketRemoveObjective packetRemoveObjective = new PacketRemoveObjective();
-        packetRemoveObjective.setObjectiveName( display.objective() );
+        packetRemoveObjective.setObjectiveName(display.objective());
         return packetRemoveObjective;
     }
 
-    public void updateScore( long scoreId, int score ) {
-        ScoreboardLine line = this.scoreboardLines.get( scoreId );
-        if ( line != null ) {
-            line.setScore( score );
+    public synchronized void updateScore(long scoreId, int score) {
+        ScoreboardLine line = this.scoreboardLines.get(scoreId);
+        if (line != null) {
+            line.setScore(score);
 
-            this.broadcast( this.constructSetScore( scoreId, line ) );
+            this.broadcast(this.constructSetScore(scoreId, line));
         }
     }
 
-    public void removeScoreEntry( long scoreId ) {
-        ScoreboardLine line = this.scoreboardLines.remove( scoreId );
-        if ( line != null ) {
-            this.broadcast( this.constructRemoveScores( scoreId ) );
+    public synchronized void removeScoreEntry(long scoreId) {
+        ScoreboardLine line = this.scoreboardLines.remove(scoreId);
+        if (line != null) {
+            this.broadcast(this.constructRemoveScores(scoreId));
         }
     }
 
-    private Packet constructRemoveScores( long scoreId ) {
+    private Packet constructRemoveScores(long scoreId) {
         PacketSetScore packetSetScore = new PacketSetScore();
-        packetSetScore.setType( (byte) 1 );
+        packetSetScore.setType((byte) 1);
         packetSetScore.setEntries(new ArrayList<>() {{
             add(new PacketSetScore.ScoreEntry(scoreId, "", 0));
-        }} );
+        }});
         return packetSetScore;
     }
 
@@ -285,16 +285,17 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
      * @param scoreId of the line
      * @return score of the line or 0 when the line is not found
      */
-    public int getScore( long scoreId ) {
-        ScoreboardLine line = this.scoreboardLines.remove( scoreId );
-        if ( line != null ) {
+    public synchronized int getScore(long scoreId) {
+        ScoreboardLine line = this.scoreboardLines.remove(scoreId);
+        if (line != null) {
             return line.getScore();
         }
 
         return 0;
     }
 
-    private class ScoreboardLine {
+    private static class ScoreboardLine {
+
         private final byte type;
         private final long entityId;
         private final String fakeName;
@@ -309,7 +310,6 @@ public class Scoreboard implements io.gomint.scoreboard.Scoreboard {
             this.objective = objective;
             this.score = score;
         }
-
 
         public int getScore() {
             return this.score;

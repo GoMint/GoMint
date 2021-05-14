@@ -37,4 +37,13 @@ public class PlayerFoodLevelChangeEvent extends CancellablePlayerEvent<PlayerFoo
         return this.change;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerFoodLevelChangeEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", change=" + this.change +
+            '}';
+    }
+
 }

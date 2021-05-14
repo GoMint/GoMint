@@ -7,34 +7,57 @@
 
 package io.gomint.server.world;
 
-import io.gomint.GoMint;
 import io.gomint.server.GoMintServer;
+import io.gomint.server.entity.EntityPlayer;
+import io.gomint.server.util.SimpleUncaughtExceptionHandler;
+import io.gomint.server.util.Values;
 import io.gomint.server.world.generator.vanilla.VanillaGeneratorImpl;
 import io.gomint.server.world.inmemory.InMemoryWorldAdapter;
 import io.gomint.server.world.leveldb.LevelDBWorldAdapter;
 import io.gomint.server.world.leveldb.ZippedLevelDBWorldAdapter;
-import io.gomint.world.World;
 import io.gomint.world.generator.CreateOptions;
 import io.gomint.world.generator.integrated.VanillaGenerator;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nonnull;
 
 /**
  * @author BlackyPaw
  * @author geNAZt
+ * @author Janmm14
  * @version 1.0
  */
 public class WorldManager {
 
+    private static final String THREAD_GROUP_NAME = "gomint-worlds";
+    private static final String THREAD_PREFIX = "Gomint World Thread #";
     private static final Logger LOGGER = LoggerFactory.getLogger(WorldManager.class);
     private final GoMintServer server;
-    private Object2ObjectMap<String, WorldAdapter> loadedWorlds;
+    private final Map<String, WorldAdapter> loadedWorlds;
+    private final ThreadGroup threadGroup = new ThreadGroup(THREAD_GROUP_NAME);
+    private final ExecutorService executorService = Executors.newCachedThreadPool(new ThreadFactory() {
+        private final AtomicLong counter = new AtomicLong(1);
+
+        @Override
+        public Thread newThread(@Nonnull Runnable r) {
+            Thread thread = new Thread(WorldManager.this.threadGroup, r, THREAD_PREFIX + this.counter.getAndIncrement());
+            thread.setUncaughtExceptionHandler(SimpleUncaughtExceptionHandler.INSTANCE);
+            return thread;
+        }
+    });
 
     /**
      * Constructs a new world manager that does not yet hold any worlds.
@@ -43,19 +66,7 @@ public class WorldManager {
      */
     public WorldManager(GoMintServer server) {
         this.server = server;
-        this.loadedWorlds = new Object2ObjectOpenHashMap<>();
-    }
-
-    /**
-     * Ticks all worlds that are currently loaded.
-     *
-     * @param currentTimeMS The current time in milliseconds. Used to reduce the number of calls to System#currentTimeMillis()
-     * @param dT            The delta from the full second which has been calculated in the last tick
-     */
-    public void update(long currentTimeMS, float dT) {
-        for (WorldAdapter world : this.worlds()) {
-            world.update(currentTimeMS, dT);
-        }
+        this.loadedWorlds = new ConcurrentHashMap<>();
     }
 
     /**
@@ -64,10 +75,6 @@ public class WorldManager {
      * @return A collection of all worlds held by the world manager
      */
     public Collection<WorldAdapter> worlds() {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Getting worlds from an async thread. This is not safe and can lead to CME", new Exception());
-        }
-
         return this.loadedWorlds.values();
     }
 
@@ -79,11 +86,11 @@ public class WorldManager {
      * @return The world if found or null otherwise
      */
     public WorldAdapter world(String name) {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Getting a world from an async thread. This is not safe and can lead to CME", new Exception());
-        }
-
         return this.loadedWorlds.get(name);
+    }
+
+    public ExecutorService executorService() {
+        return this.executorService;
     }
 
     /**
@@ -94,6 +101,7 @@ public class WorldManager {
      */
     private void addWorld(WorldAdapter world) {
         this.loadedWorlds.put(world.folder(), world);
+        world.startThread();
     }
 
     /**
@@ -105,11 +113,7 @@ public class WorldManager {
      * @return the world which has been loaded
      * @throws WorldLoadException Thrown in case the world could not be loaded
      */
-    public World loadWorld(String path) throws WorldLoadException {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Loading worlds from an async thread. This is not safe and can lead to CME", new Exception());
-        }
-
+    public WorldAdapter loadWorld(String path) throws WorldLoadException {
         File file = new File(path);
 
         // Check if we already loaded
@@ -143,14 +147,14 @@ public class WorldManager {
         throw new WorldLoadException("Could not detect world format");
     }
 
-    private World loadZippedLevelDBWorld(File path, String name) throws WorldLoadException {
+    private WorldAdapter loadZippedLevelDBWorld(File path, String name) throws WorldLoadException {
         LevelDBWorldAdapter world = ZippedLevelDBWorldAdapter.load(this.server, path, name);
         this.addWorld(world);
         LOGGER.info("Successfully loaded world '{}'", name);
         return world;
     }
 
-    private World loadLevelDBWorld(File path) throws WorldLoadException {
+    private WorldAdapter loadLevelDBWorld(File path) throws WorldLoadException {
         LevelDBWorldAdapter world = LevelDBWorldAdapter.load(this.server, path);
         this.addWorld(world);
         LOGGER.info("Successfully loaded world '{}'", path.getName());
@@ -161,13 +165,54 @@ public class WorldManager {
      * Close and save all worlds
      */
     public void close() {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Closing worlds from an async thread. This is not safe and can lead to CME", new Exception());
+        LOGGER.info("Closing all worlds");
+        ArrayList<WorldAdapter> worlds = new ArrayList<>(this.worlds());
+        CountDownLatch countDownLatch = new CountDownLatch(worlds.size());
+
+        for (WorldAdapter loadedWorld : worlds) {
+            if (!loadedWorld.isRunning()) {
+                LOGGER.warn("World {} is not running, but still registered", loadedWorld);
+                countDownLatch.countDown();
+            } else {
+                loadedWorld.unloadInternal(player -> player.disconnect("Server closed"),
+                    () -> {
+                        LOGGER.debug("World {} closed.", loadedWorld);
+                        countDownLatch.countDown();
+                    });
+            }
+        }
+        LOGGER.debug("Waiting for worlds to close...");
+        try {
+            countDownLatch.await(2, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            // Ignored .-.
+        }
+        LOGGER.debug("Shutting down world executor...");
+
+        int wait = (int) Values.CLIENT_TICK_MS;
+        this.executorService.shutdown();
+        while (!this.executorService.isTerminated() && wait-- > 0) {
+            try {
+                this.executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                // Ignored .-.
+            }
         }
 
-        LOGGER.info("Closing all worlds");
-        for (WorldAdapter loadedWorld : new ArrayList<>(this.worlds())) {
-            loadedWorld.unload(null);
+        LOGGER.info("Shutdown of world executor completed");
+
+        if (wait <= 0) {
+            List<Runnable> remainRunning = this.executorService.shutdownNow();
+            for (Runnable runnable : remainRunning) {
+                LOGGER.warn("Runnable " + runnable.getClass().getName() + " has been terminated due to shutdown");
+            }
+        }
+
+        if (wait <= 0) {
+            List<Runnable> remainRunning = this.executorService.shutdownNow();
+            for (Runnable runnable : remainRunning) {
+                LOGGER.warn("Runnable " + runnable.getClass().getName() + " has been terminated due to shutdown");
+            }
         }
         LOGGER.info("All worlds closed");
     }
@@ -188,11 +233,7 @@ public class WorldManager {
      * @param options with which this world should be generated
      * @return generated world
      */
-    public World createWorld(String name, CreateOptions options) {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Creating worlds from an async thread. This is not safe and can lead to CME", new Exception());
-        }
-
+    public WorldAdapter createWorld(String name, CreateOptions options) {
         // Check if we need to cascade a generator
         if (options.generator() == VanillaGenerator.class) {
             options.generator(VanillaGeneratorImpl.class);
@@ -224,8 +265,7 @@ public class WorldManager {
             default:
                 return null;
         }
-
-        this.loadedWorlds.put(world.folder(), world);
+        this.addWorld(world);
         return world;
     }
 

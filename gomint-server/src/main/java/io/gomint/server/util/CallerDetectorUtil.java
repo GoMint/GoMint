@@ -8,6 +8,7 @@
 package io.gomint.server.util;
 
 import io.gomint.plugin.Plugin;
+import io.gomint.server.plugin.PluginClassloader;
 
 /**
  * @author geNAZt
@@ -28,6 +29,15 @@ public class CallerDetectorUtil {
      */
     public static Class<? extends Plugin> getCallerPlugin() {
         return callerDetector.getCallerPlugin();
+    }
+
+    /**
+     * Get the plugin which called
+     *
+     * @return class of plugin
+     */
+    public static PluginClassloader getCallerPluginLoader() {
+        return callerDetector.getCallerPluginLoader();
     }
 
 }

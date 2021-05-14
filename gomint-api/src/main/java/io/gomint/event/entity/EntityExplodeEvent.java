@@ -63,4 +63,14 @@ public class EntityExplodeEvent extends CancellableEntityEvent<EntityExplodeEven
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "EntityExplodeEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", affectedBlocks=" + this.affectedBlocks +
+            ", randomDropChance=" + this.randomDropChance +
+            '}';
+    }
+
 }

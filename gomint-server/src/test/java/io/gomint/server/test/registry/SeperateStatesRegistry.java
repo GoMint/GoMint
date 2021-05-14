@@ -11,6 +11,7 @@ import io.gomint.inventory.item.ItemDoubleStoneSlab;
 import io.gomint.inventory.item.ItemPrismarineDoubleSlab;
 import io.gomint.inventory.item.ItemStack;
 import io.gomint.server.test.IntegrationTest;
+import io.gomint.server.test.WorldTestUtil;
 import io.gomint.server.world.WorldAdapter;
 import io.gomint.world.WorldType;
 import io.gomint.world.block.BlockPrismarineSlab;
@@ -33,6 +34,7 @@ public class SeperateStatesRegistry extends IntegrationTest {
     @Order(1)
     public void generateNonExisting() {
         this.world = (WorldAdapter) this.server.createWorld("test", new CreateOptions().worldType(WorldType.IN_MEMORY));
+        WorldTestUtil.blockUntilWorldRuns(this.world);
     }
 
     @Test

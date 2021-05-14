@@ -107,4 +107,14 @@ public class SignChangeTextEvent extends CancellablePlayerEvent<SignChangeTextEv
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "SignChangeTextEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", sign=" + this.sign +
+            ", lines=" + this.lines +
+            '}';
+    }
+
 }

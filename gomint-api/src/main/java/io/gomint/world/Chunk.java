@@ -57,11 +57,20 @@ public interface Chunk {
     <T extends Block> T blockAt(int x, int y, int z, WorldLayer layer );
 
     /**
+     * Iterate over all entities in this chunk and run entityConsumer on every entity.
+     *
+     * @param entityConsumer which gets called for every found entity
+     * @return chunk for chaining
+     */
+    Chunk iterateAllEntities(Consumer<Entity<?>> entityConsumer);
+
+    /**
      * Iterate over all entities in this chunk and run entityConsumer on every correct one.
      *
      * @param entityClass    for which we search
      * @param entityConsumer which gets called for every found entity
      * @param <T>            type of entity
+     * @return chunk for chaining
      */
     <T extends Entity<?>> Chunk iterateEntities( Class<T> entityClass, Consumer<T> entityConsumer );
 
@@ -73,6 +82,7 @@ public interface Chunk {
      * @param y     coordinate in the chunk (0-255) of the block to replace
      * @param z     coordinate in the chunk (0-15) of the block to replace
      * @param block which should be used to replace selected block
+     * @return chunk for chaining
      */
     Chunk block(int x, int y, int z, Block block );
 
@@ -85,6 +95,7 @@ public interface Chunk {
      * @param z     coordinate in the chunk (0-15) of the block to replace
      * @param layer on which the block should be placed
      * @param block which should be used to replace selected block
+     * @return chunk for chaining
      */
     Chunk block(int x, int y, int z, WorldLayer layer, Block block );
 
@@ -94,6 +105,7 @@ public interface Chunk {
      * @param x     The x-coordinate of the block column
      * @param z     The z-coordinate of the block column
      * @param biome The biome to set
+     * @return chunk for chaining
      */
     Chunk biome(int x, int z, Biome biome );
 

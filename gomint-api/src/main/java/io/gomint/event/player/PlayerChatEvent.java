@@ -75,4 +75,15 @@ public class PlayerChatEvent extends CancellablePlayerEvent<PlayerChatEvent> {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerChatEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", text='" + this.text + '\'' +
+            ", recipients=" + this.recipients +
+            ", sender='" + this.sender + '\'' +
+            '}';
+    }
+
 }

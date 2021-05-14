@@ -26,9 +26,10 @@ import java.util.Map;
 public class SetWorldSpawnCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         if (!(sender instanceof PlayerCommandSender)) {
-            return CommandOutput.failure("Executor is required to be a player");
+            output.fail("Executor is required to be a player");
+            return;
         }
 
         EntityPlayer executor = (EntityPlayer) sender;
@@ -46,7 +47,7 @@ public class SetWorldSpawnCommand extends Command {
         this.floorLocation(worldSpawnLocation);
         affectedWorld.spawnLocation(worldSpawnLocation);
 
-        return CommandOutput.successful(String.format("Set the world spawn point to (%.1f, %.1f, %.1f)",
+        output.success(String.format("Set the world spawn point to (%.1f, %.1f, %.1f)",
             worldSpawnLocation.x(),
             worldSpawnLocation.y(),
             worldSpawnLocation.z()));

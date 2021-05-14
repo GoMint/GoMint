@@ -20,6 +20,15 @@ public class PlayerAnimationEvent extends CancellablePlayerEvent<PlayerAnimation
         return this.animation;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerAnimationEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", animation=" + this.animation +
+            '}';
+    }
+
     public enum Animation {
 
         SWING

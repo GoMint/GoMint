@@ -25,4 +25,13 @@ public class PlayerToggleSprintEvent extends CancellablePlayerEvent<PlayerToggle
         return this.newStatus;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerToggleSprintEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", newStatus=" + this.newStatus +
+            '}';
+    }
+
 }

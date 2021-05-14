@@ -8,6 +8,7 @@
 package io.gomint.server.network;
 
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import io.gomint.server.scheduler.AsyncScheduler;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -23,12 +24,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class PostProcessExecutorService implements Runnable {
 
-    private ListeningScheduledExecutorService executorService;
+    private AsyncScheduler executorService;
     private List<PostProcessExecutor> executors = new CopyOnWriteArrayList<>();
 
-    public PostProcessExecutorService( ListeningScheduledExecutorService executorService ) {
+    public PostProcessExecutorService( AsyncScheduler executorService ) {
         this.executorService = executorService;
-        this.executorService.scheduleAtFixedRate( this, 0, 10, TimeUnit.MILLISECONDS );
+        this.executorService.scheduleAsync( this, 0, 10, TimeUnit.MILLISECONDS );
 
         this.executors.add( new PostProcessExecutor( this.executorService ) );
     }

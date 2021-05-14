@@ -38,12 +38,6 @@ public class PacketInventoryTransactionHandler implements PacketHandler<PacketIn
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PacketInventoryTransactionHandler.class);
 
-    private final EventCaller eventCaller;
-
-    public PacketInventoryTransactionHandler(EventCaller eventCaller) {
-        this.eventCaller = eventCaller;
-    }
-
     @Override
     public void handle(PacketInventoryTransaction packet, long currentTimeMillis, PlayerConnection connection) {
         switch (packet.getType()) {
@@ -208,7 +202,7 @@ public class PacketInventoryTransactionHandler implements PacketHandler<PacketIn
 
                 // Only send interact events, there is nothing special to be done in here
                 PlayerInteractEvent event = new PlayerInteractEvent(connection.entity(), PlayerInteractEvent.ClickType.RIGHT, null);
-                this.eventCaller.callEvent(event);
+                connection.server().pluginManager().callEvent(event);
 
                 if (!event.cancelled()) {
                     io.gomint.server.inventory.item.ItemStack<?> itemStack = (io.gomint.server.inventory.item.ItemStack<?>) connection.entity().inventory().itemInHand();

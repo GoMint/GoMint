@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  * @author geNAZt
- * @version 2.0
+ * @version 1.0
  * @stability 2
  */
 public class ProjectileHitBlocksEvent extends CancellableEntityEvent<ProjectileHitBlocksEvent> {
@@ -44,23 +44,21 @@ public class ProjectileHitBlocksEvent extends CancellableEntityEvent<ProjectileH
     }
 
     /**
-     * Get the projectile which hit the blocks
-     *
-     * @return projectile which hit the blocks
-     * @deprecated Use {@link #entity()} instead
-     */
-    @Deprecated(since = "2.0", forRemoval = true)
-    public EntityProjectile<?> projectile() {
-        return (EntityProjectile<?>) super.entity();
-    }
-
-    /**
      * Get the blocks which got hit by the projectile
      *
      * @return blocks which got hit
      */
     public Set<Block> blocks() {
         return this.blocks;
+    }
+
+    @Override
+    public String toString() {
+        return "ProjectileHitBlocksEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", blocks=" + this.blocks +
+            '}';
     }
 
 }

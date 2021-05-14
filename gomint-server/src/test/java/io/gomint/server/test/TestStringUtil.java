@@ -5,7 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.gomint.server.test;import io.gomint.server.util.StringUtil;
+package io.gomint.server.test;
+
+import io.gomint.server.util.StringUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

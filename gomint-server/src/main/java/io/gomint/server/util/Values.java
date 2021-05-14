@@ -3,10 +3,10 @@ package io.gomint.server.util;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Random static values used all over the place for minecraft magic values
+ *
  * @author geNAZt
  * @version 1.0
- *
- * Random static values used all over the place for minecraft magic values
  */
 public class Values {
 

@@ -42,4 +42,13 @@ public class InventoryTransactionEvent extends CancellablePlayerEvent<InventoryT
         return this.transactions;
     }
 
+    @Override
+    public String toString() {
+        return "InventoryTransactionEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", transactions=" + this.transactions +
+            '}';
+    }
+
 }

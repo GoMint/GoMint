@@ -32,4 +32,13 @@ public class PlayerToggleFlyEvent extends CancellablePlayerEvent<PlayerToggleFly
         return this.newStatus;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerToggleFlyEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", newStatus=" + this.newStatus +
+            '}';
+    }
+
 }

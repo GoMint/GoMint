@@ -49,4 +49,13 @@ public class EntityVelocityEvent extends CancellableEntityEvent<EntityVelocityEv
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "EntityVelocityEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", velocity=" + this.velocity +
+            '}';
+    }
+
 }

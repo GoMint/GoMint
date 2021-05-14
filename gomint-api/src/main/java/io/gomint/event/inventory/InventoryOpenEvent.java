@@ -40,4 +40,13 @@ public class InventoryOpenEvent extends CancellablePlayerEvent<InventoryOpenEven
         return this.inventory;
     }
 
+    @Override
+    public String toString() {
+        return "InventoryOpenEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", inventory=" + this.inventory +
+            '}';
+    }
+
 }

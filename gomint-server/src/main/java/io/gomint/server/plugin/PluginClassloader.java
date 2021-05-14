@@ -1,6 +1,7 @@
 package io.gomint.server.plugin;
 
 import io.gomint.GoMint;
+import io.gomint.plugin.Plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class PluginClassloader extends URLClassLoader {
     }
 
     private final PluginMeta meta;
+    public Plugin instance;
 
     /**
      * Create a new plugin class loader

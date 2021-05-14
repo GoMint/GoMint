@@ -12,9 +12,6 @@ import io.gomint.event.EventHandler;
 import io.gomint.event.EventListener;
 import io.gomint.server.maintenance.ReportUploader;
 import io.gomint.server.plugin.PluginClassloader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +19,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import javax.annotation.Nullable;
 
 /**
  * @author BlackyPaw
@@ -35,6 +34,8 @@ class EventHandlerMethod implements Comparable<EventHandlerMethod> {
 
     private final EventHandler annotation;
     private EventProxy proxy;
+    @Nullable
+    private final Predicate<Event> predicate;
 
     // For toString reference
     private final EventListener instance;
@@ -45,53 +46,17 @@ class EventHandlerMethod implements Comparable<EventHandlerMethod> {
      * @param instance   The instance of the EventHandler which should be used to invoke the EventHandler Method
      * @param method     The method which should be invoked when the event arrives
      * @param annotation The annotation which holds additional information about this EventHandler Method
+     * @param predicate  The predicate to check if the method should recieve certain events
      */
-    EventHandlerMethod(final EventListener instance, final Method method, final EventHandler annotation) {
+    EventHandlerMethod(final EventListener instance, final Method method, final EventHandler annotation, @Nullable Predicate<Event> predicate) {
         this.annotation = annotation;
         this.instance = instance;
+        this.predicate = predicate;
 
         // Build up proxy
         try {
-            if (instance.getClass().getClassLoader() instanceof PluginClassloader) {
-                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-
-                String listenerClassName = instance.getClass().getName().replace(".", "/");
-                String className = listenerClassName + "Proxy" + PROXY_COUNT.incrementAndGet();
-                String eventClassName = method.getParameterTypes()[0].getName().replace(".", "/");
-
-                // Define the class
-                cw.visit(Opcodes.V11,
-                    Opcodes.ACC_PUBLIC,
-                    className,
-                    null,
-                    "java/lang/Object",
-                    new String[]{"io/gomint/server/event/EventProxy"});
-
-                // Define the obj field
-                cw.newField(className, "obj", "L" + listenerClassName + ";");
-                cw.visitField(Opcodes.ACC_PUBLIC, "obj", "L" + listenerClassName + ";", null, null);
-
-                // Build constructor
-                MethodVisitor con = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-                con.visitCode();
-                con.visitVarInsn(Opcodes.ALOAD, 0);
-                con.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-                con.visitInsn(Opcodes.RETURN);
-                con.visitMaxs(1, 1);
-
-                // Build call method
-                MethodVisitor callCon = cw.visitMethod(Opcodes.ACC_PUBLIC, "call", "(Lio/gomint/event/Event;)V", null, null);
-                callCon.visitCode();
-                callCon.visitVarInsn(Opcodes.ALOAD, 0);
-                callCon.visitFieldInsn(Opcodes.GETFIELD, className, "obj", "L" + listenerClassName + ";");
-                callCon.visitVarInsn(Opcodes.ALOAD, 1);
-                callCon.visitTypeInsn(Opcodes.CHECKCAST, eventClassName);
-                callCon.visitMethodInsn(Opcodes.INVOKEVIRTUAL, listenerClassName, method.getName(), "(L" + eventClassName + ";)V", false);
-                callCon.visitInsn(Opcodes.RETURN);
-                callCon.visitMaxs(2, 2);
-
-                // Get bytecode
-                byte[] data = cw.toByteArray();
+            if (instance.getClass().getClassLoader() instanceof PluginClassloader || instance.getClass().getClassLoader() == ClassLoader.getSystemClassLoader()) {
+                byte[] data = EventCallerClassCreator.createClass(instance, method, PROXY_COUNT.incrementAndGet());
 
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(instance.getClass(), lookup);
@@ -135,6 +100,10 @@ class EventHandlerMethod implements Comparable<EventHandlerMethod> {
      * @param event Event which should be handled in this handler
      */
     public void invoke(Event event) {
+        if (this.predicate != null && !this.predicate.test(event)) {
+            LOGGER.debug("Handler predicate wants to ignore event {}: {}", this, event);
+            return;
+        }
         try {
             this.proxy.call(event);
         } catch (Exception cause) {
@@ -144,9 +113,10 @@ class EventHandlerMethod implements Comparable<EventHandlerMethod> {
     }
 
     /**
-     * Returns true when this EventHandler accepts cancelled events
+     * Returns true when this method ignores cancelled events
      *
-     * @return true when it wants to accept events when cancelled, false if not
+     * @return true when this listener method wants to ignore events when cancelled, false if it wants to get events
+     * regardless of its cancelled state
      */
     boolean ignoreCancelled() {
         return this.annotation.ignoreCancelled();

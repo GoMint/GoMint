@@ -13,6 +13,8 @@ import io.gomint.plugin.StartupPriority;
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nullable;
 
 /**
  * @author BlackyPaw
@@ -37,6 +39,11 @@ public class PluginMeta {
     private boolean hasModuleInfo;
     private Set<String> packages;
     private Set<File> moduleDependencies;
+    
+    // World stuff
+    private PluginWorldConfig pluginWorldConfig;
+    @Nullable
+    private ConcurrentHashMap.KeySetView<String, Boolean> activeLoadedWorlds;
 
     public PluginMeta(File pluginFile) {
         this.pluginFile = pluginFile;
@@ -141,4 +148,22 @@ public class PluginMeta {
     public File pluginFile() {
         return this.pluginFile;
     }
+
+    public PluginWorldConfig pluginWorldConfig() {
+        return this.pluginWorldConfig;
+    }
+
+    public void pluginWorldConfig(PluginWorldConfig pluginWorldConfig) {
+        this.pluginWorldConfig = pluginWorldConfig;
+    }
+
+    @Nullable
+    public ConcurrentHashMap.KeySetView<String, Boolean> activeLoadedWorlds() {
+        return this.activeLoadedWorlds;
+    }
+
+    public void activeLoadedWorlds(ConcurrentHashMap.KeySetView<String, Boolean> activeWorlds) {
+        this.activeLoadedWorlds = activeWorlds;
+    }
+
 }

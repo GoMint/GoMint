@@ -26,6 +26,11 @@ public class SecurityManagerCallerDetector implements CallerDetector {
         return SECURITY_MANAGER.getCallerPlugin();
     }
 
+    @Override
+    public PluginClassloader getCallerPluginLoader() {
+        return SECURITY_MANAGER.getCallerPluginLoader();
+    }
+
     /**
      * A custom security manager that exposes the getClassContext() information
      */
@@ -48,7 +53,7 @@ public class SecurityManagerCallerDetector implements CallerDetector {
                 return null;
             }
 
-            for ( Class<?> aClass : getClassContext() ) {
+            for (Class<?> aClass : getClassContext()) {
                 // Get the class loader, if its a plugin one return the main class
                 if (aClass.getClassLoader() instanceof PluginClassloader) {
                     PluginClassloader cl = (PluginClassloader) aClass.getClassLoader();
@@ -65,6 +70,28 @@ public class SecurityManagerCallerDetector implements CallerDetector {
 
             return null;
         }
+
+        /**
+         * Get the plugin who called
+         *
+         * @return class of the plugin who called
+         */
+        public PluginClassloader getCallerPluginLoader() {
+            ClassLoader cls = Thread.currentThread().getContextClassLoader();
+            if (cls instanceof PluginClassloader) {
+                return (PluginClassloader) cls;
+            }
+
+            for (Class<?> aClass : getClassContext()) {
+                // Get the class loader, if its a plugin one return the main class
+                if (aClass.getClassLoader() instanceof PluginClassloader) {
+                    return (PluginClassloader) aClass.getClassLoader();
+                }
+            }
+
+            return null;
+        }
+
     }
 
 }

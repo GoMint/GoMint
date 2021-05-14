@@ -14,4 +14,9 @@ package io.gomint.event;
  */
 public class Event {
 
+    @Override
+    public String toString() {
+        return "Event{}";
+    }
+
 }

@@ -9,9 +9,10 @@ package io.gomint.server.world.generator.vanilla;
 
 import com.google.common.util.concurrent.SettableFuture;
 import io.gomint.math.BlockPosition;
+import io.gomint.server.GoMintServer;
 import io.gomint.server.async.Future;
-import io.gomint.server.network.NetworkManager;
 import io.gomint.server.network.PostProcessExecutor;
+import io.gomint.server.network.PostProcessExecutorService;
 import io.gomint.server.util.XXHash;
 import io.gomint.server.world.WorldAdapter;
 import io.gomint.server.world.generator.vanilla.chunk.ChunkRequest;
@@ -48,6 +49,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -69,7 +71,7 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
     private int port;
     private long seed;
 
-    private final NetworkManager networkManager;
+    private final GoMintServer server;
 
     private List<Client> client;
     private ProcessWrapper processWrapper;
@@ -111,7 +113,7 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
             System.exit(-1);
         }
 
-        this.networkManager = ((WorldAdapter) world).server().networkManager();
+        this.server = ((WorldAdapter) world).server();
 
         this.ensureSeed();
 
@@ -285,9 +287,9 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
     }
 
     private int getRandomPort() {
-        try(DatagramSocket datagramSocket = new DatagramSocket(0)) {
+        try (DatagramSocket datagramSocket = new DatagramSocket(0)) {
             return datagramSocket.getLocalPort();
-        } catch(SocketException e) {
+        } catch (SocketException e) {
             throw new RuntimeException("Could not open socket to find next free port", e);
         }
     }
@@ -322,20 +324,19 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
 
         this.client = new CopyOnWriteArrayList<>();
         for (int i = 0; i < 2; i++) {
-            this.networkManager
-                .server()
-                .executorService()
-                .schedule(() -> this.connectClient(worldAdapter), Duration.ofMillis((i + 1) * 2000));
+            this.server.asyncScheduler()
+                .scheduleAsync(() -> this.connectClient(worldAdapter), (i + 1) * 2, TimeUnit.SECONDS);
         }
     }
 
     private Client connectClient(WorldAdapter worldAdapter) {
-        PostProcessExecutor executor = this.networkManager.postProcessService().getExecutor();
+        PostProcessExecutorService postProcessService = this.server.networkManager().postProcessService();
+        PostProcessExecutor executor = postProcessService.getExecutor();
         Client newClient = new Client(worldAdapter, worldAdapter.server().encryptionKeyFactory(),
             this.queue, executor, null);
 
         newClient.onDisconnect(aVoid -> {
-            this.networkManager.postProcessService().releaseExecutor(executor);
+            postProcessService.releaseExecutor(executor);
             if (this.manualClose.get()) {
                 return;
             }
@@ -350,10 +351,10 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
 
             this.client.remove(newClient);
 
-            this.networkManager.server().executorService().schedule(() -> {
+            this.server.asyncScheduler().scheduleAsync(() -> {
                 Client client = this.connectClient(worldAdapter);
                 this.client.add(client);
-            }, Duration.ofMillis(500));
+            }, 500, TimeUnit.MILLISECONDS);
         });
 
         // Accept the spawn point
@@ -409,7 +410,7 @@ public class VanillaGeneratorImpl extends VanillaGenerator {
         ChunkRequest request = new ChunkRequest(x, z, new Future<>());
         if (!this.queue.contains(request)) {
             LOGGER.debug("Offering for client to process");
-          
+
             this.queue.offer(request);
 
             try {

@@ -7,7 +7,6 @@
 
 package io.gomint.server.world.generator.vanilla.client;
 
-import com.google.common.util.concurrent.ListenableScheduledFuture;
 import io.gomint.crypto.Processor;
 import io.gomint.jraknet.ClientSocket;
 import io.gomint.jraknet.Connection;
@@ -17,6 +16,7 @@ import io.gomint.jraknet.PacketReliability;
 import io.gomint.jraknet.SocketEvent;
 import io.gomint.math.BlockPosition;
 import io.gomint.math.Location;
+import io.gomint.scheduler.Task;
 import io.gomint.server.entity.tileentity.TileEntity;
 import io.gomint.server.jwt.JwtSignatureException;
 import io.gomint.server.jwt.JwtToken;
@@ -62,27 +62,19 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.PublicKey;
-import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import static io.gomint.server.network.Protocol.PACKET_DISCONNECT;
-import static io.gomint.server.network.Protocol.PACKET_WORLD_CHUNK;
-import static io.gomint.server.network.Protocol.PACKET_PLAY_STATE;
-import static io.gomint.server.network.Protocol.PACKET_ENCRYPTION_REQUEST;
-import static io.gomint.server.network.Protocol.PACKET_RESOURCEPACK_INFO;
-import static io.gomint.server.network.Protocol.PACKET_RESOURCEPACK_STACK;
-import static io.gomint.server.network.Protocol.PACKET_START_GAME;
-import static io.gomint.server.network.Protocol.PACKET_MOVE_PLAYER;
+import static io.gomint.server.network.Protocol.*;
 
 /**
  * @author geNAZt
@@ -124,7 +116,7 @@ public class Client implements ConnectionWithState {
     private Processor outputProcessor = new Processor(true);
 
     // Update thread
-    private ListenableScheduledFuture<?> networkUpdater;
+    private Task networkUpdater;
     private UI debugUI;
 
     // Chunk processing
@@ -139,7 +131,7 @@ public class Client implements ConnectionWithState {
         this.debugUI = debugUI;
         this.queue = queue;
 
-        this.networkUpdater = this.world.server().executorService().scheduleAtFixedRate(this::update, (int) Values.CLIENT_TICK_MS, (int) Values.CLIENT_TICK_MS, TimeUnit.MILLISECONDS);
+        this.networkUpdater = this.world.server().asyncScheduler().scheduleAsync(this::update, (int) Values.CLIENT_TICK_MS, (int) Values.CLIENT_TICK_MS, TimeUnit.MILLISECONDS);
 
         this.socket = new ClientSocket(LoggerFactory.getLogger(NetworkManager.class));
 
@@ -329,7 +321,7 @@ public class Client implements ConnectionWithState {
                 this.connection.disconnect(message);
             }
 
-            this.networkUpdater.cancel(true);
+            this.networkUpdater.cancel();
             this.networkUpdater = null;
 
             this.connection = null;
@@ -391,11 +383,11 @@ public class Client implements ConnectionWithState {
             this.send(login);
 
             // Check for termination if server did not respond
-            this.world.server().executorService().schedule(() -> {
+            this.world.server().asyncScheduler().scheduleAsync(() -> {
                 if (this.state == PlayerConnectionState.LOGIN) {
                     this.disconnect("Not logged in");
                 }
-            }, Duration.ofMillis(5000));
+            }, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -536,7 +528,7 @@ public class Client implements ConnectionWithState {
                         }
                     }
                 }
-              
+
                 LOGGER.debug("Adding chunk {} / {} to cache", chunkAdapter.x(), chunkAdapter.z());
 
                 chunkAdapter.populated(true);

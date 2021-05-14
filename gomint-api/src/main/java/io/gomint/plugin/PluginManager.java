@@ -10,8 +10,11 @@ package io.gomint.plugin;
 import io.gomint.command.Command;
 import io.gomint.event.Event;
 import io.gomint.event.EventListener;
+import io.gomint.world.World;
 
 import java.util.Map;
+import java.util.function.Predicate;
+import javax.annotation.Nullable;
 
 /**
  * @author geNAZt
@@ -70,13 +73,38 @@ public interface PluginManager {
     <T extends Event> T callEvent(T event);
 
     /**
-     * Register a new event listener for the given plugin. This only works when you call it from a plugin class.
+     * Register a new event listener for the given plugin.
+     * <br><br>
+     * Events implementing {@linkplain io.gomint.event.interfaces.WorldEvent WorldEvent} will be filtered, it will only
+     * be called for events taking place in worlds which {@linkplain World#folder() folder name} is present in the
+     * {@code worlds.yml} configuration.
      *
-     * @param plugin   The plugin which wants to register this listener
-     * @param listener The listener which we want to register
-     * @throws SecurityException when somebody else except the plugin registers the listener
+     * @param listener The listener which should be registered
+     * @see Plugin#eventInActiveWorlds(Event)
+     * @see #registerListener(Plugin, EventListener, Predicate)
+     * @since 2.0
      */
     PluginManager registerListener(Plugin plugin, EventListener listener);
+
+    /**
+     * Register a new event listener for the given plugin with an additional event filter. This only works when you call
+     * it from a plugin class.
+     * <br><br>
+     * Events implementing {@linkplain io.gomint.event.interfaces.WorldEvent WorldEvent} will be filtered, it will only
+     * be called for events taking place in worlds which {@linkplain World#folder() folder name} is present in the
+     * {@code worlds.yml} configuration.
+     *
+     * @param plugin    The plugin which wants to register this listener
+     * @param listener  The listener which we want to register
+     * @param predicate The predicate allows you to filter events. Events where the predicate returns {@code false} are
+     *                  not forwarded to the actual listener. {@code null} means that only the default active world
+     *                  filtering will be done.
+     * @throws SecurityException when somebody else except the plugin registers the listener
+     * @see Plugin#eventInActiveWorlds(Event)
+     * @see #registerListener(Plugin, EventListener)
+     * @since 2.0
+     */
+    PluginManager registerListener(Plugin plugin, EventListener listener, @Nullable Predicate<Event> predicate);
 
     /**
      * Unregister a listener. This listener does not get any more events after this
@@ -90,8 +118,8 @@ public interface PluginManager {
     /**
      * Register a new command for the given plugin. This only works when you call it from a plugin class.
      *
-     * @param plugin
-     * @param command
+     * @param plugin  The plugin which wants to register this command
+     * @param command The command to register
      */
     PluginManager registerCommand(Plugin plugin, Command command);
 

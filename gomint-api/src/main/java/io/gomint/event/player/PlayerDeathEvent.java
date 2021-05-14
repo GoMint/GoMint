@@ -77,4 +77,14 @@ public class PlayerDeathEvent extends SimplePlayerEvent {
         return this.drops;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerDeathEvent{" +
+            "player=" + this.player() +
+            ", deathMessage='" + this.deathMessage + '\'' +
+            ", dropInventory=" + this.dropInventory +
+            ", drops=" + this.drops +
+            '}';
+    }
+
 }

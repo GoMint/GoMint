@@ -9,14 +9,14 @@ package io.gomint.server.test.inventory.item;
 
 import io.gomint.inventory.item.ItemStack;
 import io.gomint.math.Location;
-import io.gomint.server.entity.EntityPlayer;
 import io.gomint.math.Vector;
-
+import io.gomint.server.entity.EntityPlayer;
 import io.gomint.server.test.IntegrationTest;
+import io.gomint.server.test.WorldTestUtil;
 import io.gomint.server.util.ClassPath;
 import io.gomint.server.world.WorldAdapter;
-import io.gomint.world.WorldType;
 import io.gomint.server.world.block.Block;
+import io.gomint.world.WorldType;
 import io.gomint.world.block.BlockAir;
 import io.gomint.world.block.data.Facing;
 import io.gomint.world.generator.CreateOptions;
@@ -41,11 +41,16 @@ public class PlacementTest extends IntegrationTest {
     @Order(1)
     public void generateNonExisting() {
         this.world = (WorldAdapter) this.server.createWorld("test", new CreateOptions().worldType(WorldType.IN_MEMORY));
+        WorldTestUtil.blockUntilWorldRuns(this.world);
     }
 
     @Test
     @Order(2)
-    public void placeAll() throws IOException {
+    public void placeAll() {
+        WorldTestUtil.runInWorldThread(this.world, this::placeAll0);
+    }
+
+    private void placeAll0() throws IOException {
         Block block = this.world.blockAt(50, 50, 50);
         Block downBlock = block.side(Facing.DOWN);
 

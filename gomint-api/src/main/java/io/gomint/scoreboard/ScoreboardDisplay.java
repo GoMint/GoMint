@@ -41,23 +41,23 @@ public interface ScoreboardDisplay {
      * Add a new entity to the display
      *
      * @param entity which should be displayed
-     * @param score which should be displayed with the entity
+     * @param score  which should be displayed with the entity
      */
-    DisplayEntry addEntity( Entity<?> entity, int score );
+    DisplayEntry addEntity(Entity<?> entity, int score);
 
     /**
      * Add a new line to the display
      *
-     * @param line which should be added to the display
+     * @param line  which should be added to the display
      * @param score which should be given to the line
      */
-    DisplayEntry addLine( String line, int score );
+    DisplayEntry addLine(String line, int score);
 
     /**
-     * Remove a entry made with {@link #addEntity(Entity, int)} or {@link #addLine(String, int)}
+     * Remove an entry made with {@link #addEntity(Entity, int)} or {@link #addLine(String, int)}
      *
      * @param entry which should be removed
      */
-    ScoreboardDisplay removeEntry( DisplayEntry entry );
+    ScoreboardDisplay removeEntry(DisplayEntry entry);
 
 }

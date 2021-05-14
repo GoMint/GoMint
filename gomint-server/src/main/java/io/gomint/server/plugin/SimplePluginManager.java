@@ -22,8 +22,8 @@ import io.gomint.server.GoMintServer;
 import io.gomint.server.command.CommandManager;
 import io.gomint.server.event.EventManager;
 import io.gomint.server.maintenance.ReportUploader;
-import io.gomint.server.scheduler.CoreScheduler;
-import io.gomint.server.scheduler.PluginScheduler;
+import io.gomint.server.scheduler.AsyncScheduler;
+import io.gomint.server.scheduler.PluginSchedulerAdapter;
 import io.gomint.server.util.CallerDetectorUtil;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
@@ -53,10 +53,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import javax.annotation.Nullable;
 
 /**
  * @author geNAZt
@@ -67,16 +70,17 @@ public class SimplePluginManager implements PluginManager, EventCaller {
     private static final Logger LOGGER = LoggerFactory.getLogger(SimplePluginManager.class);
 
     private final GoMintServer server;
-    private final CoreScheduler scheduler;
+    private final AsyncScheduler scheduler;
     private final File pluginFolder;
 
     private final List<PluginMeta> detectedPlugins = new ArrayList<>();
     private final Map<String, Plugin> loadedPlugins = new LinkedHashMap<>();
     private final Map<String, Plugin> installedPlugins = new LinkedHashMap<>();
-    private final Map<String, PluginMeta> metadata = new HashMap<>();
+    private final Map<String, PluginMeta> metadata = new ConcurrentHashMap<>();
 
     private final EventManager eventManager = new EventManager();
     private final CommandManager commandManager;
+    private final PluginWorldConfigManager pluginWorldConfigManager;
 
     private Field loggerField;
     private Field nameField;
@@ -84,6 +88,7 @@ public class SimplePluginManager implements PluginManager, EventCaller {
     private Field versionField;
     private Field schedulerField;
     private Field serverField;
+    private Field activeLoadedWorldsField;
     private Field listenerListField;
 
     /**
@@ -93,9 +98,10 @@ public class SimplePluginManager implements PluginManager, EventCaller {
      */
     public SimplePluginManager(GoMintServer server) {
         this.server = server;
-        this.scheduler = server.scheduler();
+        this.scheduler = server.asyncScheduler();
         this.pluginFolder = new File("plugins");
         this.commandManager = new CommandManager();
+        this.pluginWorldConfigManager = new PluginWorldConfigManager(this);
 
         if (!this.pluginFolder.exists() && !this.pluginFolder.mkdirs()) {
             LOGGER.warn("Plugin folder was not there and could not be created, plugins will not be available");
@@ -120,6 +126,9 @@ public class SimplePluginManager implements PluginManager, EventCaller {
 
             this.serverField = Plugin.class.getDeclaredField("server");
             this.serverField.setAccessible(true);
+
+            this.activeLoadedWorldsField = Plugin.class.getDeclaredField("activeLoadedWorlds");
+            this.activeLoadedWorldsField.setAccessible(true);
 
             this.listenerListField = Plugin.class.getDeclaredField("listeners");
             this.listenerListField.setAccessible(true);
@@ -146,6 +155,18 @@ public class SimplePluginManager implements PluginManager, EventCaller {
 
     public CommandManager commandManager() {
         return this.commandManager;
+    }
+
+    public EventManager eventManager() {
+        return this.eventManager;
+    }
+
+    public Map<String, PluginMeta> pluginMetadatas() {
+        return this.metadata;
+    }
+
+    public GoMintServer server() {
+        return this.server;
     }
 
     /**
@@ -285,14 +306,18 @@ public class SimplePluginManager implements PluginManager, EventCaller {
             if (clazz == null) {
                 return;
             }
+            loader.instance = clazz;
 
             // Reflect the logger and stuff in
-            this.loggerField.set(clazz, LoggerFactory.getLogger(loader.loadClass(pluginMeta.mainClass())));
+            this.loggerField.set(clazz, LoggerFactory.getLogger(clazz.getClass()));
             this.pluginManagerField.set(clazz, this);
-            this.schedulerField.set(clazz, new PluginScheduler(clazz, this.scheduler));
+            this.schedulerField.set(clazz, new PluginSchedulerAdapter(clazz, this.scheduler));
             this.nameField.set(clazz, pluginMeta.name());
             this.versionField.set(clazz, pluginMeta.version());
             this.serverField.set(clazz, this.server);
+
+            this.pluginWorldConfigManager.onPluginLoad(pluginMeta, clazz);
+            this.activeLoadedWorldsField.set(clazz, pluginMeta.activeLoadedWorlds());
 
             clazz.onStartup();
 
@@ -673,8 +698,8 @@ public class SimplePluginManager implements PluginManager, EventCaller {
 
         // Cancel all tasks and cleanup scheduler
         try {
-            PluginScheduler pluginScheduler = (PluginScheduler) this.schedulerField.get(plugin);
-            pluginScheduler.cleanup();
+            PluginSchedulerAdapter pluginSchedulerAdapter = (PluginSchedulerAdapter) this.schedulerField.get(plugin);
+            pluginSchedulerAdapter.cleanup();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -735,7 +760,21 @@ public class SimplePluginManager implements PluginManager, EventCaller {
             throw new SecurityException("Wanted to register listener for another plugin");
         }
 
-        this.eventManager.registerListener(listener);
+        this.eventManager.registerListener(listener, plugin::eventInActiveWorlds);
+        return this;
+    }
+
+    @Override
+    public PluginManager registerListener(Plugin plugin, EventListener listener, @Nullable Predicate<Event> predicate) {
+        if (!plugin.getClass().getClassLoader().equals(listener.getClass().getClassLoader())) {
+            throw new SecurityException("Wanted to register listener for another plugin");
+        }
+
+        Predicate<Event> eventPredicate = plugin::eventInActiveWorlds;
+        if (predicate != null) {
+            eventPredicate = eventPredicate.and(predicate);
+        }
+        this.eventManager.registerListener(listener, eventPredicate);
         return this;
     }
 

@@ -8,8 +8,11 @@
 package io.gomint.server.command;
 
 import io.gomint.player.ChatType;
+import io.gomint.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 /**
  * @author geNAZt
@@ -51,6 +54,12 @@ public class ConsoleCommandSender implements io.gomint.command.ConsoleCommandSen
     @Override
     public boolean hasPermission(String permission, boolean defaultValue) {
         return defaultValue;
+    }
+
+    @Nullable
+    @Override
+    public World world() {
+        return null;
     }
 
 }

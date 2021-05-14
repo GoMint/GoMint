@@ -36,4 +36,11 @@ public class SimpleEntityEvent extends Event implements EntityEvent {
         return this.entity;
     }
 
+    @Override
+    public String toString() {
+        return "SimpleEntityEvent{" +
+            "entity=" + this.entity +
+            '}';
+    }
+
 }

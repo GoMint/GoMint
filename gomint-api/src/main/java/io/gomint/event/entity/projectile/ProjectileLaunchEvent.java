@@ -44,6 +44,15 @@ public class ProjectileLaunchEvent extends CancellableEntityEvent<ProjectileLaun
         return (EntityProjectile<?>) super.entity();
     }
 
+    @Override
+    public String toString() {
+        return "ProjectileLaunchEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", cause=" + this.cause +
+            '}';
+    }
+
     public enum Cause {
 
         /**

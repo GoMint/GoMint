@@ -323,8 +323,8 @@ public abstract class Block implements io.gomint.world.block.Block {
             worldAdapter.removeTileEntity(this.position);
         }
 
-        long next = this.update(UpdateReason.BLOCK_ADDED, this.world.server().currentTickTime(), 0f);
-        if (next > this.world.server().currentTickTime()) {
+        long next = this.update(UpdateReason.BLOCK_ADDED, this.world.currentTickTime(), 0f);
+        if (next > this.world.currentTickTime()) {
             this.world.addTickingBlock(next, this.position);
         }
 
@@ -390,8 +390,8 @@ public abstract class Block implements io.gomint.world.block.Block {
 
         Block copy = worldAdapter.blockAt(this.position);
 
-        long next = copy.update(UpdateReason.BLOCK_ADDED, this.world.server().currentTickTime(), 0f);
-        if (next > this.world.server().currentTickTime()) {
+        long next = copy.update(UpdateReason.BLOCK_ADDED, this.world.currentTickTime(), 0f);
+        if (next > this.world.currentTickTime()) {
             this.world.addTickingBlock(next, this.position);
         }
 

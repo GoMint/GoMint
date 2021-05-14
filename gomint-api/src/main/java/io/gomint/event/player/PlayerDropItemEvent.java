@@ -33,4 +33,13 @@ public class PlayerDropItemEvent extends CancellablePlayerEvent<PlayerDropItemEv
         return this.itemStack;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerDropItemEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", itemStack=" + this.itemStack +
+            '}';
+    }
+
 }

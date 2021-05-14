@@ -135,7 +135,7 @@ public class ItemCrossbow extends ItemStack< io.gomint.inventory.item.ItemCrossb
     }
 
     private float calculateForce( EntityPlayer player ) {
-        long currentDraw = player.world().server().currentTickTime() - player.actionStart();
+        long currentDraw = player.world().currentTickTime() - player.actionStart();
         float force = (float) currentDraw / 1000f;
         if ( force < 0.1f ) {
             return -1f;

@@ -25,4 +25,13 @@ public class PlayerSwimEvent extends CancellablePlayerEvent<PlayerSwimEvent> {
         return this.newStatus;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerSwimEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", newStatus=" + this.newStatus +
+            '}';
+    }
+
 }

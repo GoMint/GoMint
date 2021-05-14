@@ -60,6 +60,16 @@ public class EntityHealEvent extends CancellableEntityEvent<EntityHealEvent> {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "EntityHealEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", cause=" + this.cause +
+            ", healAmount=" + this.healAmount +
+            '}';
+    }
+
     public enum Cause {
 
         /**

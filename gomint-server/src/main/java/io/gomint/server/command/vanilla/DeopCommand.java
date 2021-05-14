@@ -23,22 +23,24 @@ import java.util.Map;
 public class DeopCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         EntityPlayer target = (EntityPlayer) arguments.get("player");
         if (target == null) {
             if (sender instanceof PlayerCommandSender) {
                 target = (EntityPlayer) sender;
             } else {
-                return CommandOutput.failure("Please provide a player to deop");
+                output.fail("Please provide a player to deop");
+                return;
             }
         }
 
         if (!target.op()) {
-            return CommandOutput.failure("Could not deop (already not op): " + target.name());
+            output.fail("Could not deop (already not op): " + target.name());
+            return;
         }
 
         target.op(false);
         target.sendMessage("You have been de-opped");
-        return CommandOutput.successful("De-opped: " + target.name());
+        output.success("De-opped: " + target.name());
     }
 }

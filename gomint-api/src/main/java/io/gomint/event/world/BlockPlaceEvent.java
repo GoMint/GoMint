@@ -79,4 +79,16 @@ public class BlockPlaceEvent extends CancellablePlayerEvent<BlockPlaceEvent> {
         return this.item;
     }
 
+    @Override
+    public String toString() {
+        return "BlockPlaceEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", placedAgainst=" + this.placedAgainst +
+            ", shouldReplace=" + this.shouldReplace +
+            ", item=" + this.item +
+            ", replacingBlock=" + this.replacingBlock +
+            '}';
+    }
+
 }

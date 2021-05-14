@@ -81,6 +81,11 @@ public class SyncTaskManager {
         }
         return this;
     }
+    
+    public SyncTaskManager clear() {
+        this.taskList.clear();
+        return this;
+    }
 
     private static class SyncScheduledTaskHolder {
         private long execution;

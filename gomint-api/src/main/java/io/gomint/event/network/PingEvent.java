@@ -69,4 +69,13 @@ public class PingEvent extends Event {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "PingEvent{" +
+            "motd='" + this.motd + '\'' +
+            ", onlinePlayers=" + this.onlinePlayers +
+            ", maxPlayers=" + this.maxPlayers +
+            '}';
+    }
+
 }

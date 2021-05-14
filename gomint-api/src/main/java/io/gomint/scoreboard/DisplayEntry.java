@@ -19,7 +19,7 @@ public interface DisplayEntry {
      *
      * @param score which should be used
      */
-    DisplayEntry score(int score );
+    DisplayEntry score(int score);
 
     /**
      * Get the score of this entry

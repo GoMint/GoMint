@@ -43,4 +43,12 @@ public class PlayerQuitEvent extends SimplePlayerEvent {
         return this.quitMessage;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerQuitEvent{" +
+            "player=" + this.player() +
+            ", quitMessage='" + this.quitMessage + '\'' +
+            '}';
+    }
+
 }

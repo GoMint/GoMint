@@ -7,7 +7,6 @@
 
 package io.gomint.server.scheduler;
 
-import io.gomint.scheduler.Scheduler;
 import io.gomint.scheduler.Task;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
@@ -28,22 +27,21 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author geNAZt
+ * @author Janmm14
  * @version 1.0
  */
-public class CoreScheduler implements Scheduler {
+public class AsyncScheduler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger( CoreScheduler.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( AsyncScheduler.class );
 
     private final ScheduledExecutorService executorService;
-    private final SyncTaskManager syncTaskManager;
 
     private final Object2LongMap<Thread> threads = new Object2LongOpenHashMap<>();
     private final Map<Thread, Runnable> threadRunnables = new HashMap<>();
     private final Set<Thread> alreadyAlerted = new HashSet<>();
 
-    public CoreScheduler( ScheduledExecutorService executorService, SyncTaskManager syncTaskManager ) {
+    public AsyncScheduler( ScheduledExecutorService executorService ) {
         this.executorService = executorService;
-        this.syncTaskManager = syncTaskManager;
 
         // Check for long execution timings
         ThreadMXBean mxBean = ManagementFactory.getThreadMXBean();
@@ -76,12 +74,10 @@ public class CoreScheduler implements Scheduler {
         }, 10, 10, TimeUnit.MILLISECONDS );
     }
 
-    @Override
     public Task executeAsync( Runnable runnable ) {
         return this.scheduleAsync( runnable, 0, TimeUnit.MILLISECONDS );
     }
 
-    @Override
     public Task scheduleAsync( Runnable runnable, long delay, TimeUnit timeUnit ) {
         return this.scheduleAsync( runnable, delay, -1, timeUnit );
     }
@@ -105,7 +101,6 @@ public class CoreScheduler implements Scheduler {
         };
     }
 
-    @Override
     public Task scheduleAsync( Runnable runnable, long delay, long period, TimeUnit timeUnit ) {
         AsyncScheduledTask task = new AsyncScheduledTask( runnable );
 
@@ -122,21 +117,8 @@ public class CoreScheduler implements Scheduler {
         return task;
     }
 
-    @Override
-    public Task execute( Runnable runnable ) {
-        return this.schedule( runnable, 0, TimeUnit.MILLISECONDS );
-    }
-
-    @Override
-    public Task schedule( Runnable runnable, long delay, TimeUnit timeUnit ) {
-        return this.schedule( runnable, delay, -1, timeUnit );
-    }
-
-    @Override
-    public Task schedule( Runnable runnable, long delay, long period, TimeUnit timeUnit ) {
-        SyncScheduledTask task = new SyncScheduledTask( this.syncTaskManager, runnable, delay, period, timeUnit );
-        this.syncTaskManager.addTask( task );
-        return task;
+    public boolean isShutdown() {
+        return this.executorService.isShutdown();
     }
 
 }

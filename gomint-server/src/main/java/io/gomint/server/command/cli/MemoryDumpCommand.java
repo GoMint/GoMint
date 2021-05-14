@@ -22,14 +22,13 @@ import java.util.Map;
  * @author geNAZt
  * @version 1.0
  */
-@Name( "memorydump" )
-@Description( "Dump offheap memory stats" )
-@Permission( "gomint.cli.command.memorydump")
+@Name("memorydump")
+@Description("Dump offheap memory stats")
+@Permission("gomint.cli.command.memorydump")
 public class MemoryDumpCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments) {
-        //
+    public void execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments, CommandOutput output) {
         System.out.println("==========================================");
         System.out.println("BufferPoolMXBean");
         System.out.println("------------------------------------------");
@@ -40,8 +39,6 @@ public class MemoryDumpCommand extends Command {
                 mbean.getTotalCapacity(),
                 mbean.getMemoryUsed());
         }
-
-        return null;
     }
 
 }

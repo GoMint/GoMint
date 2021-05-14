@@ -39,4 +39,13 @@ public class EntityCollisionWithEntityEvent extends CancellableEntityEvent<Entit
         return this.collidesWith;
     }
 
+    @Override
+    public String toString() {
+        return "EntityCollisionWithEntityEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", collidesWith=" + this.collidesWith +
+            '}';
+    }
+
 }

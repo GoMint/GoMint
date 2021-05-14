@@ -25,6 +25,7 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
 
     private final EntityPlayer player;
     private final List<PermissionGroup> groups = new ArrayList<>();
+    private final List<Group> dirtyGroups = new ArrayList<>();
     private final Object2BooleanMap<String> permissions = new Object2BooleanOpenHashMap<>();
     private boolean dirty = false;
 
@@ -42,54 +43,47 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
      * @param currentTimeMS The current system time in milliseconds
      * @param dT            The time that has passed since the last tick in 1/s
      */
-    public void update( long currentTimeMS, float dT ) {
-        // Check if a group changed
-        for ( PermissionGroup group : this.groups ) {
-            if ( group.isDirty() ) {
-                this.dirty = true;
-                break;
-            }
-        }
-
+    public synchronized void update(long currentTimeMS, float dT) {
         // Resend commands when something changed
-        if ( this.dirty ) {
+        if (this.dirty || !this.dirtyGroups.isEmpty()) {
             // Resend commands
             this.player.sendCommands();
 
             this.dirty = false;
+            this.dirtyGroups.clear();
         }
     }
 
     @Override
-    public boolean has(String permission) {
+    public synchronized boolean has(String permission) {
         return this.has(permission, false);
     }
 
     @Override
-    public boolean has(String permission, boolean defaultValue ) {
+    public synchronized boolean has(String permission, boolean defaultValue) {
         // Check if player is op
-        if ( this.player != null && this.player.op() ) {
+        if (this.player != null && this.player.op()) {
             return true;
         }
 
         // Check if we have a cached copy
-        Boolean val = this.cache.get( permission );
-        if ( val == null ) {
+        Boolean val = this.cache.get(permission);
+        if (val == null) {
             // Check player permissions first
             String wildCardFound = null;
-            for ( Object2BooleanMap.Entry<String> entry : this.permissions.object2BooleanEntrySet() ) {
+            for (Object2BooleanMap.Entry<String> entry : this.permissions.object2BooleanEntrySet()) {
                 // Did we find a full permission match?
                 String currentChecking = entry.getKey();
-                if ( permission.equals(currentChecking) ) {
-                    this.cache.put( permission, entry.getBooleanValue() );
+                if (permission.equals(currentChecking)) {
+                    this.cache.put(permission, entry.getBooleanValue());
                     return entry.getBooleanValue();
                 }
 
                 // Check for wildcard
-                if ( currentChecking.endsWith( "*" ) ) {
-                    String wildCardChecking = currentChecking.substring( 0, currentChecking.length() - 1 );
-                    if ( permission.startsWith( wildCardChecking ) ) {
-                        if ( wildCardFound == null || currentChecking.length() > wildCardFound.length() ) {
+                if (currentChecking.endsWith("*")) {
+                    String wildCardChecking = currentChecking.substring(0, currentChecking.length() - 1);
+                    if (permission.startsWith(wildCardChecking)) {
+                        if (wildCardFound == null || currentChecking.length() > wildCardFound.length()) {
                             wildCardFound = currentChecking;
                         }
                     }
@@ -97,35 +91,35 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
             }
 
             // Check if we found a wildcard
-            if ( wildCardFound != null ) {
-                val = this.permissions.getBoolean( wildCardFound );
-                this.cache.put( permission, val );
+            if (wildCardFound != null) {
+                val = this.permissions.getBoolean(wildCardFound);
+                this.cache.put(permission, val);
                 return val;
             }
 
             // Expensive way of checking q.q (groups)
-            List<PermissionGroup> reverted = new ArrayList<>( this.groups );
-            Collections.reverse( reverted );
+            List<PermissionGroup> reverted = new ArrayList<>(this.groups);
+            Collections.reverse(reverted);
 
             // Iterate over all groups until we found one we can use
-            for ( PermissionGroup group : reverted ) {
+            for (PermissionGroup group : reverted) {
                 ObjectSet<Object2BooleanMap.Entry<String>> playerCursor = group.cursor();
                 wildCardFound = null;
 
-                if ( playerCursor != null ) {
-                    for ( Object2BooleanMap.Entry<String> entry : playerCursor ) {
+                if (playerCursor != null) {
+                    for (Object2BooleanMap.Entry<String> entry : playerCursor) {
                         // Did we find a full permission match?
                         String currentChecking = entry.getKey();
-                        if ( permission.equals( currentChecking ) ) {
-                            this.cache.put( permission, entry.getBooleanValue() );
+                        if (permission.equals(currentChecking)) {
+                            this.cache.put(permission, entry.getBooleanValue());
                             return entry.getBooleanValue();
                         }
 
                         // Check for wildcard
-                        if ( currentChecking.endsWith( "*" ) ) {
-                            String wildCardChecking = currentChecking.substring( 0, currentChecking.length() - 1 );
-                            if ( permission.startsWith( wildCardChecking ) ) {
-                                if ( wildCardFound == null || currentChecking.length() > wildCardFound.length() ) {
+                        if (currentChecking.endsWith("*")) {
+                            String wildCardChecking = currentChecking.substring(0, currentChecking.length() - 1);
+                            if (permission.startsWith(wildCardChecking)) {
+                                if (wildCardFound == null || currentChecking.length() > wildCardFound.length()) {
                                     wildCardFound = currentChecking;
                                 }
                             }
@@ -133,14 +127,14 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
                     }
                 }
 
-                if ( wildCardFound != null ) {
-                    val = group.get( wildCardFound );
-                    this.cache.put( permission, val );
+                if (wildCardFound != null) {
+                    val = group.get(wildCardFound);
+                    this.cache.put(permission, val);
                     return val;
                 }
             }
 
-            this.cache.put( permission, defaultValue );
+            this.cache.put(permission, defaultValue);
             return defaultValue;
         }
 
@@ -148,32 +142,34 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
     }
 
     @Override
-    public PermissionManager addGroup( Group group ) {
-        this.groups.add( (PermissionGroup) group );
+    public synchronized PermissionManager addGroup(Group group) {
+        this.groups.add((PermissionGroup) group);
+        this.dirtyGroups.add(group);
+        this.cache.clear();
+        return this;
+    }
+
+    @Override
+    public synchronized PermissionManager removeGroup(Group group) {
+        //noinspection RedundantCast
+        this.groups.remove((PermissionGroup) group);
+        this.dirtyGroups.remove(group);
         this.cache.clear();
         this.dirty = true;
         return this;
     }
 
     @Override
-    public PermissionManager removeGroup( Group group ) {
-        this.groups.remove( group );
+    public synchronized PermissionManager permission(String permission, boolean value) {
+        this.permissions.put(permission, value);
         this.cache.clear();
         this.dirty = true;
         return this;
     }
 
     @Override
-    public PermissionManager permission(String permission, boolean value ) {
-        this.permissions.put( permission, value );
-        this.cache.clear();
-        this.dirty = true;
-        return this;
-    }
-
-    @Override
-    public PermissionManager remove(String permission ) {
-        this.permissions.removeBoolean( permission );
+    public synchronized PermissionManager remove(String permission) {
+        this.permissions.removeBoolean(permission);
         this.cache.clear();
         this.dirty = true;
         return this;
@@ -183,9 +179,13 @@ public class PermissionManager implements io.gomint.permission.PermissionManager
      * Notify about op toggle
      */
     @Override
-    public PermissionManager toggleOp() {
+    public synchronized PermissionManager toggleOp() {
         this.dirty = true;
         return this;
+    }
+
+    synchronized void markDirty(Group from) {
+        this.dirtyGroups.add(from);
     }
 
 }

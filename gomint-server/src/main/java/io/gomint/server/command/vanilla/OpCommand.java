@@ -23,22 +23,24 @@ import java.util.Map;
 public class OpCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         EntityPlayer target = (EntityPlayer) arguments.get("player");
         if (target == null) {
             if (sender instanceof PlayerCommandSender) {
                 target = (EntityPlayer) sender;
             } else {
-                return CommandOutput.failure("Please provide a player to op");
+                output.fail("Please provide a player to op");
+                return;
             }
         }
 
         if (target.op()) {
-            return CommandOutput.failure("Could not op (already op or higher): " + target.name());
+            output.fail("Could not op (already op or higher): " + target.name());
+            return;
         }
 
         target.op(true);
         target.sendMessage("You have been opped");
-        return CommandOutput.successful("Opped: " + target.name());
+        output.success("Opped: " + target.name());
     }
 }

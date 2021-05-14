@@ -11,6 +11,7 @@ import io.gomint.math.BlockPosition;
 import io.gomint.math.Location;
 import io.gomint.server.GoMintServer;
 import io.gomint.server.entity.EntityPlayer;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.world.ChunkAdapter;
 import io.gomint.server.world.ChunkCache;
 import io.gomint.server.world.WorldAdapter;
@@ -47,6 +48,7 @@ public final class InMemoryWorldAdapter extends WorldAdapter {
 
     @Override
     public ChunkAdapter loadChunk( int x, int z, boolean generate ) {
+        Precondition.safeWorldAccess(this, true);
         ChunkAdapter chunkAdapter = this.chunkCache.getChunk( x, z );
         if ( chunkAdapter != null ) {
             return chunkAdapter;

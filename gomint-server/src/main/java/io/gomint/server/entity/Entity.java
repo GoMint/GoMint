@@ -7,6 +7,7 @@
 
 package io.gomint.server.entity;
 
+import com.google.common.base.Preconditions;
 import io.gomint.entity.BossBar;
 import io.gomint.event.entity.EntityDamageEvent;
 import io.gomint.event.entity.EntityTeleportEvent;
@@ -24,6 +25,7 @@ import io.gomint.server.network.packet.PacketEntityMetadata;
 import io.gomint.server.network.packet.PacketEntityMotion;
 import io.gomint.server.network.packet.PacketEntityMovement;
 import io.gomint.server.network.packet.PacketSpawnEntity;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.util.Values;
 import io.gomint.server.world.CoordinateUtils;
 import io.gomint.server.world.WorldAdapter;
@@ -108,7 +110,7 @@ public abstract class Entity<E extends io.gomint.entity.Entity<E>> implements io
     // CHECKSTYLE:ON
     protected float offsetY;
     protected int age;
-    protected WorldAdapter world;
+    protected volatile WorldAdapter world;
     protected boolean ticking = true;
     private float width;
     private boolean stuckInBlock = false;
@@ -270,7 +272,9 @@ public abstract class Entity<E extends io.gomint.entity.Entity<E>> implements io
         return this.world;
     }
 
-    public void world(WorldAdapter world ) {
+    public void world(WorldAdapter world) {
+        Preconditions.checkNotNull(world, "world");
+        Precondition.safeWorldAccess(world, false);
         this.world = world;
     }
 
@@ -1133,7 +1137,7 @@ public abstract class Entity<E extends io.gomint.entity.Entity<E>> implements io
         PacketEntityMetadata metadataPacket = new PacketEntityMetadata();
         metadataPacket.setEntityId( this.id() );
         metadataPacket.setMetadata( this.metadataContainer );
-        metadataPacket.setTick( this.world.server().currentTickTime() / (int) Values.CLIENT_TICK_MS );
+        metadataPacket.setTick( this.world.currentTickTime() / (int) Values.CLIENT_TICK_MS );
         player.connection().addToSendQueue( metadataPacket );
     }
 
@@ -1274,6 +1278,7 @@ public abstract class Entity<E extends io.gomint.entity.Entity<E>> implements io
         if ( this.world != null ) {
             throw new IllegalStateException( "Entity already spawned" );
         }
+        Precondition.safeWorldAccess(location.world(), false);
 
         this.world = (WorldAdapter) location.world();
         this.world.spawnEntityAt( this, location.x(), location.y(), location.z(), location.yaw(), location.pitch() );
@@ -1286,21 +1291,27 @@ public abstract class Entity<E extends io.gomint.entity.Entity<E>> implements io
 
     }
 
-    public E teleport( Location to, EntityTeleportEvent.Cause cause ) {
-        EntityTeleportEvent entityTeleportEvent = new EntityTeleportEvent( this, this.location(), to, cause );
-        this.world.server().pluginManager().callEvent( entityTeleportEvent );
-        if ( entityTeleportEvent.cancelled() ) {
+    public E teleport(Location to, EntityTeleportEvent.Cause cause) {
+        Precondition.safeWorldAccess(this.world, false);
+        EntityTeleportEvent entityTeleportEvent = new EntityTeleportEvent(this, this.location(), to, cause);
+        this.world.server().pluginManager().callEvent(entityTeleportEvent);
+        if (entityTeleportEvent.cancelled()) {
             return (E) this;
         }
 
-        WorldAdapter actualWorld = this.world();
+        WorldAdapter currentWorld = this.world();
 
-        this.setAndRecalcPosition( to );
 
-        if ( !to.world().equals( actualWorld ) ) {
-            actualWorld.removeEntity( this );
-            this.world( (WorldAdapter) to.world() );
-            ( (WorldAdapter) to.world() ).spawnEntityAt( this, to.x(), to.y(), to.z(), to.yaw(), to.pitch() );
+        if (!to.world().equals(currentWorld)) {
+            currentWorld.removeEntity(this);
+            WorldAdapter newWorld = (WorldAdapter) to.world();
+            newWorld.syncScheduler().execute(() -> {
+                this.world(newWorld);
+                this.setAndRecalcPosition(to);
+                newWorld.spawnEntityAt(this, to.x(), to.y(), to.z(), to.yaw(), to.pitch());
+            });
+        } else {
+            this.setAndRecalcPosition(to);
         }
 
         this.fallDistance = 0;

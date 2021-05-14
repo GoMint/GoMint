@@ -7,10 +7,12 @@
 
 package io.gomint.command;
 
+import io.gomint.entity.EntityPlayer;
+
 /**
  * @author geNAZt
  * @version 1.0
  * @stability 3
  */
-public interface PlayerCommandSender<E> extends CommandSender<E> {
+public interface PlayerCommandSender extends CommandSender<EntityPlayer> {
 }

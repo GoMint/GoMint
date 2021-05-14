@@ -57,4 +57,14 @@ public class BlockBreakEvent extends CancellablePlayerEvent<BlockBreakEvent> {
         return this.breakBlock;
     }
 
+    @Override
+    public String toString() {
+        return "BlockBreakEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", breakBlock=" + this.breakBlock +
+            ", drops=" + this.drops +
+            '}';
+    }
+
 }

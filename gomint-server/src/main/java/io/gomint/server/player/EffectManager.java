@@ -32,7 +32,6 @@ import java.util.List;
 public class EffectManager {
 
     private final EntityLiving<?> living;
-    private final GoMintServer server = (GoMintServer) GoMint.instance();
     private final Byte2ObjectMap<Effect> effects = new Byte2ObjectOpenHashMap<>();
 
     public EffectManager(EntityLiving<?> living) {
@@ -82,10 +81,10 @@ public class EffectManager {
             old.remove( this.living );
 
             sendPacket( PacketMobEffect.EVENT_MODIFY, id, effect.getAmplifier(), effect.isVisible(),
-                MathUtils.fastFloor( ( effect.getRunoutTimer() - this.server.currentTickTime() ) / Values.CLIENT_TICK_MS ) );
+                MathUtils.fastFloor( ( effect.getRunoutTimer() - this.living.world().currentTickTime() ) / Values.CLIENT_TICK_MS ) );
         } else {
             sendPacket( PacketMobEffect.EVENT_ADD, id, effect.getAmplifier(),
-                effect.isVisible(), MathUtils.fastFloor( ( effect.getRunoutTimer() - this.server.currentTickTime() ) / Values.CLIENT_TICK_MS ) );
+                effect.isVisible(), MathUtils.fastFloor( ( effect.getRunoutTimer() - this.living.world().currentTickTime() ) / Values.CLIENT_TICK_MS ) );
         }
 
         effect.apply( this.living );
@@ -165,7 +164,7 @@ public class EffectManager {
                 mobEffect.setEffectId( entry.getByteKey() );
                 mobEffect.setAmplifier( entry.getValue().getAmplifier() );
                 mobEffect.setVisible( entry.getValue().isVisible() );
-                mobEffect.setDuration( MathUtils.fastFloor( ( entry.getValue().getRunoutTimer() - this.server.currentTickTime() ) / Values.CLIENT_TICK_MS ) );
+                mobEffect.setDuration( MathUtils.fastFloor( ( entry.getValue().getRunoutTimer() - this.living.world().currentTickTime() ) / Values.CLIENT_TICK_MS ) );
                 player.connection().addToSendQueue( mobEffect );
             }
         }
@@ -173,7 +172,7 @@ public class EffectManager {
 
     public void updateEffect( Effect effect ) {
         sendPacket( PacketMobEffect.EVENT_MODIFY, effect.getId(), effect.getAmplifier(), effect.isVisible(),
-            MathUtils.fastFloor( ( effect.getRunoutTimer() - this.server.currentTickTime() ) / Values.CLIENT_TICK_MS ) );
+            MathUtils.fastFloor( ( effect.getRunoutTimer() - this.living.world().currentTickTime() ) / Values.CLIENT_TICK_MS ) );
     }
 
     public boolean hasActiveEffect() {
@@ -185,7 +184,7 @@ public class EffectManager {
         for ( Byte2ObjectMap.Entry<Effect> entry : this.effects.byte2ObjectEntrySet() ) {
             NBTTagCompound effect = new NBTTagCompound( "" );
             effect.addValue( "Amplifier", (byte) entry.getValue().getAmplifier() );
-            effect.addValue( "Duration", (int) ( entry.getValue().getRunoutTimer() - this.server.currentTickTime() ) / Values.CLIENT_TICK_MS );
+            effect.addValue( "Duration", (int) ( entry.getValue().getRunoutTimer() - this.living.world().currentTickTime() ) / Values.CLIENT_TICK_MS );
             effect.addValue( "Id", entry.getByteKey() );
             effect.addValue( "ShowParticles", (byte) ( entry.getValue().isVisible() ? 1 : 0 ) );
             nbtEffects.add( effect );
@@ -202,7 +201,7 @@ public class EffectManager {
 
                 byte effectId = effect.getByte( "Id", (byte) -1 );
                 if ( effectId > -1 ) {
-                    Effect effectInstance = this.server.effects().generate( effectId, effect.getByte( "Amplifier", (byte) 0 ),
+                    Effect effectInstance = ((GoMintServer) GoMint.instance()).effects().generate( effectId, effect.getByte( "Amplifier", (byte) 0 ),
                         effect.getInteger( "Duration", 1 ) * (int) Values.CLIENT_TICK_MS, this );
 
                     if ( effect.getByte( "ShowParticles", (byte) 1 ) == 0 ) {

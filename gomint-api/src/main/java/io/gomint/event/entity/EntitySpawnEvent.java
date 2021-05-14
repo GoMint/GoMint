@@ -25,4 +25,12 @@ public class EntitySpawnEvent extends CancellableEntityEvent<EntitySpawnEvent> {
         super(entity);
     }
 
+    @Override
+    public String toString() {
+        return "EntitySpawnEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            '}';
+    }
+
 }

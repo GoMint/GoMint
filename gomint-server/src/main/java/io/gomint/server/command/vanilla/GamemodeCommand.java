@@ -31,13 +31,14 @@ import java.util.Map;
 public class GamemodeCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         EntityPlayer target;
         Gamemode mode;
 
         if (arguments.containsKey("player") || sender instanceof ConsoleCommandSender) {
             if (arguments.get("player") == null) {
-                return CommandOutput.failure("No targets matched selector.");
+                output.fail("No targets matched selector.");
+                return;
             }
             target = (EntityPlayer) arguments.get("player");
         } else {
@@ -66,16 +67,17 @@ public class GamemodeCommand extends Command {
                 mode = Gamemode.SPECTATOR;
                 break;
             default:
-                return CommandOutput.failure("Unknown game mode");
+                output.fail("Unknown game mode");
+                return;
         }
 
         target.gamemode(mode);
         target.sendMessage("Your game mode has been updated to " + this.getGamemodeName(mode));
 
         if (target == sender) {
-            return CommandOutput.successful("Set own game mode to %%s", this.getGamemodeName(mode));
+            output.success("Set own game mode to %%s", this.getGamemodeName(mode));
         } else {
-            return CommandOutput.successful("Set %%s's game mode to %%s", target.displayName(), this.getGamemodeName(mode));
+            output.success("Set %%s's game mode to %%s", target.displayName(), this.getGamemodeName(mode));
         }
     }
 

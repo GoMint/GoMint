@@ -104,4 +104,17 @@ public class ItemEnchantEvent extends CancellablePlayerEvent<ItemEnchantEvent> {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "ItemEnchantEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", itemToEnchant=" + this.itemToEnchant +
+            ", enchantments=" + this.enchantments +
+            ", levelCost=" + this.levelCost +
+            ", materialCost=" + this.materialCost +
+            ", levelRequirement=" + this.levelRequirement +
+            '}';
+    }
+
 }

@@ -124,7 +124,7 @@ public class LocaleManager {
      */
     public LocaleManager initFromLocaleFolder( final File path ) {
         initFromLocaleFolderWithoutAutorefresh( path );
-        this.plugin.scheduler().schedule(() -> initFromLocaleFolderWithoutAutorefresh( path ), 5, 5, TimeUnit.MINUTES );
+        this.plugin.scheduler().scheduleAsync(() -> initFromLocaleFolderWithoutAutorefresh( path ), 5, 5, TimeUnit.MINUTES );
         return this;
     }
 

@@ -43,4 +43,13 @@ public class PlayerRespawnEvent extends CancellablePlayerEvent<PlayerRespawnEven
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerRespawnEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", respawnLocation=" + this.respawnLocation +
+            '}';
+    }
+
 }

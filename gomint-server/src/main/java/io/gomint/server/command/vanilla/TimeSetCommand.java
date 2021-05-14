@@ -45,9 +45,10 @@ import java.util.concurrent.TimeUnit;
 public class TimeSetCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments, CommandOutput output) {
         if (commandSender instanceof ConsoleCommandSender) {
-            return CommandOutput.failure("Only players can set the time in a world");
+            output.fail("Only players can set the time in a world");
+            return;
         }
 
         Integer ticksOrNull = (Integer) arguments.get("ticks");
@@ -89,7 +90,7 @@ public class TimeSetCommand extends Command {
         World world = ((EntityPlayer) commandSender).world();
         world.time(time);
 
-        return CommandOutput.successful("Set time to %%s", formatDuration(time));
+        output.success("Set time to %%s", formatDuration(time));
     }
 
     private String formatDuration(Duration duration) {

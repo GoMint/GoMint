@@ -8,6 +8,7 @@
 package io.gomint.server.util;
 
 import io.gomint.plugin.Plugin;
+import io.gomint.server.plugin.PluginClassloader;
 
 /**
  * @author Fabian
@@ -21,6 +22,12 @@ public interface CallerDetector {
      * @return class of plugin
      */
     Class<? extends Plugin> getCallerPlugin();
+    /**
+     * Get the plugin loader of the plugin which called
+     *
+     * @return class loader of plugin
+     */
+    PluginClassloader getCallerPluginLoader();
 
 }
 

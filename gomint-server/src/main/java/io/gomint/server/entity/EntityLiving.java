@@ -1,6 +1,5 @@
 package io.gomint.server.entity;
 
-import io.gomint.GoMint;
 import io.gomint.entity.passive.EntityHuman;
 import io.gomint.entity.potion.PotionEffect;
 import io.gomint.entity.projectile.EntityProjectile;
@@ -19,13 +18,19 @@ import io.gomint.server.network.packet.PacketEntityEvent;
 import io.gomint.server.network.packet.PacketSpawnEntity;
 import io.gomint.server.player.EffectManager;
 import io.gomint.server.util.EnumConnectors;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.util.Values;
 import io.gomint.server.world.WorldAdapter;
 import io.gomint.taglib.NBTTagCompound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -450,9 +455,7 @@ public abstract class EntityLiving<E extends io.gomint.entity.Entity<E>> extends
 
     @Override
     public void attach(EntityPlayer player) {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Attaching entities from another thread than the main one can cause crashes", new Exception());
-        }
+        Precondition.safeWorldAccess(this.world, false);
 
         this.attachedEntities.add(player);
         this.effectManager.sendForPlayer(player);
@@ -460,9 +463,7 @@ public abstract class EntityLiving<E extends io.gomint.entity.Entity<E>> extends
 
     @Override
     public void detach(EntityPlayer player) {
-        if (!GoMint.instance().mainThread()) {
-            LOGGER.warn("Detaching entities from another thread than the main one can cause crashes", new Exception());
-        }
+        Precondition.safeWorldAccess(this.world, false);
 
         this.attachedEntities.remove(player);
     }
@@ -504,7 +505,7 @@ public abstract class EntityLiving<E extends io.gomint.entity.Entity<E>> extends
     public io.gomint.entity.potion.Effect effect(PotionEffect effect, int amplifier, long duration, TimeUnit timeUnit) {
         byte effectId = (byte) EnumConnectors.POTION_EFFECT_CONNECTOR.convert(effect).getId();
         Effect effectInstance = this.world.server().effects().generate(effectId, amplifier,
-            this.world.server().currentTickTime() + timeUnit.toMillis(duration), this.effectManager);
+            this.world.currentTickTime() + timeUnit.toMillis(duration), this.effectManager);
 
         if (effectInstance != null) {
             this.effectManager.addEffect(effectId, effectInstance);

@@ -15,6 +15,7 @@ import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.jraknet.SocketEvent;
 import io.gomint.server.GoMintServer;
+import io.gomint.server.entity.EntityPlayer;
 import io.gomint.server.maintenance.ReportUploader;
 import io.gomint.server.network.handler.PacketAdventureSettingsHandler;
 import io.gomint.server.network.handler.PacketAnimateHandler;
@@ -56,8 +57,6 @@ import io.netty.util.ThreadDeathWatcher;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +67,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -75,19 +76,23 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author BlackyPaw
  * @author geNAZt
+ * @author Janmm14
  * @version 1.0
  */
 public class NetworkManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NetworkManager.class);
     private final GoMintServer server;
-    
+
     private final PacketHandler<? extends Packet>[] packetHandlers = new PacketHandler[256];
-    
+
     // Connections which were closed and should be removed during next tick:
-    private final LongSet closedConnections = new LongOpenHashSet();
+    private final Queue<Long> closedConnections = new ConcurrentLinkedQueue<>();
     private ServerSocket socket;
     private Long2ObjectMap<PlayerConnection> playersByGuid = new Long2ObjectOpenHashMap<>();
+
+    private Long2ObjectMap<PlayerConnection> tickingPlayers = new Long2ObjectOpenHashMap<>();
+    private final List<Long> untickQueue = new ArrayList<>();
 
     // Incoming connections to be added to the player map during next tick:
     private Queue<PlayerConnection> incomingConnections = new ConcurrentLinkedQueue<>();
@@ -103,13 +108,13 @@ public class NetworkManager {
     private PostProcessExecutorService postProcessService;
 
     /**
-     * Init a new NetworkManager for accepting new connections and read incoming data
+     * Init a new NetworkManager for accepting new connections and reading incoming data
      *
-     * @param server  server instance which should be used
+     * @param server server instance which should be used
      */
     public NetworkManager(GoMintServer server) {
         this.server = server;
-        this.postProcessService = new PostProcessExecutorService(server.executorService());
+        this.postProcessService = new PostProcessExecutorService(server.asyncScheduler());
         this.initPacketHandlers();
     }
 
@@ -133,12 +138,12 @@ public class NetworkManager {
         this.packetHandlers[Protocol.PACKET_MOB_ARMOR_EQUIPMENT & 0xff] = new PacketMobArmorEquipmentHandler();
         this.packetHandlers[Protocol.PACKET_ADVENTURE_SETTINGS & 0xff] = new PacketAdventureSettingsHandler();
         this.packetHandlers[Protocol.PACKET_RESOURCEPACK_RESPONSE & 0xff] = new PacketResourcePackResponseHandler();
-        this.packetHandlers[Protocol.PACKET_LOGIN & 0xff] = new PacketLoginHandler(this.server.encryptionKeyFactory(), this.server.serverConfig(), this.server);
+        this.packetHandlers[Protocol.PACKET_LOGIN & 0xff] = new PacketLoginHandler();
         this.packetHandlers[Protocol.PACKET_MOB_EQUIPMENT & 0xff] = new PacketMobEquipmentHandler();
         this.packetHandlers[Protocol.PACKET_INTERACT & 0xff] = new PacketInteractHandler();
         this.packetHandlers[Protocol.PACKET_BLOCK_PICK_REQUEST & 0xff] = new PacketBlockPickRequestHandler();
         this.packetHandlers[Protocol.PACKET_ENCRYPTION_RESPONSE & 0xff] = new PacketEncryptionResponseHandler();
-        this.packetHandlers[Protocol.PACKET_INVENTORY_TRANSACTION & 0xff] = new PacketInventoryTransactionHandler(this.server.pluginManager());
+        this.packetHandlers[Protocol.PACKET_INVENTORY_TRANSACTION & 0xff] = new PacketInventoryTransactionHandler();
         this.packetHandlers[Protocol.PACKET_CONTAINER_CLOSE & 0xff] = new PacketContainerCloseHandler();
         this.packetHandlers[Protocol.PACKET_HOTBAR & 0xff] = new PacketHotbarHandler();
         this.packetHandlers[Protocol.PACKET_TEXT & 0xff] = new PacketTextHandler();
@@ -177,7 +182,6 @@ public class NetworkManager {
         System.setProperty("java.net.preferIPv4Stack", "true");               // We currently don't use ipv6
         System.setProperty("io.netty.selectorAutoRebuildThreshold", "0");     // Never rebuild selectors
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);   // Eats performance
-
 
         if (this.socket != null) {
             throw new IllegalStateException("Cannot re-initialize network manager");
@@ -221,32 +225,50 @@ public class NetworkManager {
             if (connection != null) {
                 LOGGER.debug("Adding new connection to the server: {}", connection);
                 this.playersByGuid.put(connection.id(), connection);
+                this.tickingPlayers.put(connection.id(), connection);
             }
         }
 
-        synchronized (this.closedConnections) {
-            if (!this.closedConnections.isEmpty()) {
-                for (long guid : this.closedConnections) {
-                    PlayerConnection connection = this.playersByGuid.remove(guid);
-                    if (connection != null) {
+        if (!this.closedConnections.isEmpty()) {
+            for (long guid : this.closedConnections) {
+                PlayerConnection connection = this.playersByGuid.remove(guid);
+                this.tickingPlayers.remove(guid);
+                if (connection != null) {
+                    final EntityPlayer entity = connection.entity();
+                    if (entity != null && entity.world() != null) {
+                        entity.world().syncScheduler().execute(connection::close);
+                    } else {
                         connection.close();
                     }
                 }
-
-                this.closedConnections.clear();
             }
+
+            this.closedConnections.clear();
+        }
+
+        if (!this.untickQueue.isEmpty()) {
+            for (long guid : this.untickQueue) {
+                this.tickingPlayers.remove(guid);
+            }
+            this.untickQueue.clear();
         }
 
         // Tick all player connections in order to receive all incoming packets:
-        for (Long2ObjectMap.Entry<PlayerConnection> entry : this.playersByGuid.long2ObjectEntrySet()) {
-            entry.getValue().update(currentMillis, lastTickTime);
+        for (PlayerConnection connection : this.tickingPlayers.values()) {
+            connection.update(currentMillis, lastTickTime);
         }
     }
 
     /**
-     * Closes the network manager and all player connections.
+     * Closes the network handling
      */
     public void close() {
+        LOGGER.info("Shutting down networking - socket and event loops");
+
+        if (this.socket != null) {
+            this.socket.close();
+            this.socket = null;
+        }
         // Close the jRaknet EventLoops, we don't need them anymore
         try {
             EventLoops.cleanup();
@@ -257,6 +279,17 @@ public class NetworkManager {
             LOGGER.error("Could not shutdown netty loops", e);
             Thread.currentThread().interrupt();
         }
+        LOGGER.info("Shutdown of network completed");
+    }
+
+    /**
+     * Removes player connection from {@code GoMint Main Thread} ticking.<br>
+     * Should only be called from {@code GoMint Main Thread}.
+     *
+     * @param guid player id (guid)
+     */
+    public void untickPlayer(long guid) {
+        this.untickQueue.add(guid);
     }
 
     // ======================================= INTERNALS ======================================= //
@@ -298,6 +331,10 @@ public class NetworkManager {
     private void handleSocketEvent(SocketEvent event) {
         switch (event.getType()) {
             case NEW_INCOMING_CONNECTION:
+                if (!this.server.isRunning()) {
+                    event.getConnection().disconnect(null);
+                    return;
+                }
                 PlayerPreLoginEvent playerPreLoginEvent = this.server().pluginManager().callEvent(
                     new PlayerPreLoginEvent(event.getConnection().getAddress())
                 );
@@ -318,6 +355,10 @@ public class NetworkManager {
                 break;
 
             case UNCONNECTED_PING:
+                if (!this.server.isRunning()) {
+                    event.getConnection().disconnect(null);
+                    return;
+                }
                 this.handleUnconnectedPing(event);
                 break;
 
@@ -356,9 +397,7 @@ public class NetworkManager {
      * @param id of the connection being closed
      */
     private void handleConnectionClosed(long id) {
-        synchronized (this.closedConnections) {
-            this.closedConnections.add(id);
-        }
+        this.closedConnections.add(id);
     }
 
     private void dumpPacket(int packetId, PacketBuffer buffer) {
@@ -424,23 +463,14 @@ public class NetworkManager {
         return this.socket.getBindAddress().getPort();
     }
 
-    /**
-     * Shut all network listeners down
-     */
-    public void shutdown() {
-        LOGGER.info("Shutting down networking");
-        if (this.socket != null) {
-            this.socket.close();
-            this.socket = null;
+    public void stopNewConnections() {
+        LOGGER.info("Shutting down new connections");
 
-            for (Long2ObjectMap.Entry<PlayerConnection> entry : this.playersByGuid.long2ObjectEntrySet()) {
-                entry.getValue().close();
-            }
-
-            this.close();
+        for (Long2ObjectMap.Entry<PlayerConnection> entry : this.tickingPlayers.long2ObjectEntrySet()) {
+            entry.getValue().close();
         }
 
-        LOGGER.info("Shutdown of network completed");
+        LOGGER.info("Shutdown of new connections");
     }
 
     public <T extends Packet> PacketHandler<T> getPacketHandler(int packetId) {

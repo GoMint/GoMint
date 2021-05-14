@@ -6,6 +6,8 @@ import io.gomint.entity.EntityPlayer;
  * This event gets fired after the inital login stage has been completed and the player is ready to be added to the world
  * to be sent to other players (become visible). If you cancel this event the player will never be spawned but it has loaded
  * world chunks and got all resource pack data.
+ * <br><br>
+ * This event is <b>not</b> called in player's world thread and is called before {@linkplain PlayerWorldJoinEvent}.
  *
  * @author geNAZt
  * @version 1.0
@@ -57,6 +59,16 @@ public class PlayerJoinEvent extends CancellablePlayerEvent<PlayerJoinEvent> {
      */
     public String kickReason() {
         return this.kickReason;
+    }
+
+    @Override
+    public String toString() {
+        return "PlayerJoinEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", kickReason='" + this.kickReason + '\'' +
+            ", joinMessage='" + this.joinMessage + '\'' +
+            '}';
     }
 
 }

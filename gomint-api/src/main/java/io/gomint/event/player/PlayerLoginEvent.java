@@ -39,4 +39,13 @@ public class PlayerLoginEvent extends CancellablePlayerEvent<PlayerLoginEvent> {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerLoginEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", kickMessage='" + this.kickMessage + '\'' +
+            '}';
+    }
+
 }

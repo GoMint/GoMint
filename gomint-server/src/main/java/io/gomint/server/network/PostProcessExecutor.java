@@ -7,7 +7,9 @@
 
 package io.gomint.server.network;
 
+import io.gomint.scheduler.Task;
 import io.gomint.server.network.packet.Packet;
+import io.gomint.server.scheduler.AsyncScheduler;
 import io.gomint.server.util.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,14 +34,14 @@ public class PostProcessExecutor implements Runnable {
     private final AtomicInteger connectionsInUse = new AtomicInteger( 0 );
     private Queue<PostProcessWorker> workers = new ConcurrentLinkedQueue<>();
     private float load;
-    private Future<?> future;
+    private Task future;
     private AtomicBoolean running = new AtomicBoolean( true );
     private final Object waiter = new Object();
-    private final ExecutorService executorService;
+    private final AsyncScheduler executorService;
 
-    public PostProcessExecutor( ExecutorService executorService ) {
+    public PostProcessExecutor( AsyncScheduler executorService ) {
         this.executorService = executorService;
-        this.future = executorService.submit( this );
+        this.future = executorService.executeAsync( this );
     }
 
     public float load() {
@@ -79,7 +81,7 @@ public class PostProcessExecutor implements Runnable {
 
     public void stop() {
         this.running.set( false );
-        this.future.cancel( true );
+        this.future.cancel();
     }
 
     @Override

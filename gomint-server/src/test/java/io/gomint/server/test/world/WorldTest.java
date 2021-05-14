@@ -8,6 +8,7 @@
 package io.gomint.server.test.world;
 
 import io.gomint.server.test.IntegrationTest;
+import io.gomint.server.test.WorldTestUtil;
 import io.gomint.server.util.collection.FixedReadOnlyMap;
 import io.gomint.server.world.BlockRuntimeIDs;
 import io.gomint.server.world.block.Block;
@@ -36,11 +37,16 @@ public class WorldTest extends IntegrationTest {
     @Order(1)
     public void generateNonExisting() {
         this.world = this.server.createWorld("test", new CreateOptions().worldType(WorldType.IN_MEMORY));
+        WorldTestUtil.blockUntilWorldRuns(this.world);
     }
 
     @Test
     @Order(2)
     public void setLog() {
+        WorldTestUtil.runInWorldThread(this.world, this::setLog0);
+    }
+
+    public void setLog0() {
         Block block = this.world.blockAt(50, 50, 50);
         Log log = block.blockType(Log.class);
 

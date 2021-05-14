@@ -6,6 +6,7 @@ open module gomint.api {
     requires org.yaml.snakeyaml;
     requires org.slf4j;
     requires commons.math3;
+    requires jsr305;
 
     exports io.gomint;
     exports io.gomint.command;
@@ -62,4 +63,5 @@ open module gomint.api {
     exports io.gomint.world.biome.component;
     exports io.gomint.entity.animal;
     exports io.gomint.event.enchant;
+    exports io.gomint.event.interfaces;
 }

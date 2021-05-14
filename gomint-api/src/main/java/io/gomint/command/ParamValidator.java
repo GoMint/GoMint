@@ -14,6 +14,15 @@ import java.util.List;
  * @author geNAZt
  * @version 1.0
  * @stability 3
+ * @see io.gomint.command.validator.BlockPositionValidator
+ * @see io.gomint.command.validator.BooleanValidator#BooleanValidator()
+ * @see io.gomint.command.validator.CommandValidator#CommandValidator() 
+ * @see io.gomint.command.validator.EnumValidator#EnumValidator(List)
+ * @see io.gomint.command.validator.FloatValidator
+ * @see io.gomint.command.validator.IntegerValidator
+ * @see io.gomint.command.validator.StringValidator#StringValidator(String)
+ * @see io.gomint.command.validator.TargetValidator
+ * @see io.gomint.command.validator.TextValidator
  */
 public abstract class ParamValidator<P> {
 

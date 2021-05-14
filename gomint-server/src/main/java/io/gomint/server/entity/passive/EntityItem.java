@@ -81,7 +81,7 @@ public class EntityItem extends Entity<EntityItemDrop> implements EntityItemDrop
 
     @Override
     public EntityItem pickupDelay(long duration, TimeUnit timeUnit ) {
-        this.pickupTime = ( (GoMintServer) GoMint.instance() ).currentTickTime() + timeUnit.toMillis( duration );
+        this.pickupTime = this.world.currentTickTime() + timeUnit.toMillis( duration );
         return this;
     }
 
@@ -140,7 +140,7 @@ public class EntityItem extends Entity<EntityItemDrop> implements EntityItemDrop
     @Override
     public void onCollideWithPlayer( EntityPlayer player ) {
         // Check if we can pick it up
-        if ( this.world.server().currentTickTime() > this.pickupTime() && !this.dead() ) {
+        if ( this.world.currentTickTime() > this.pickupTime() && !this.dead() ) {
             // Check if we have place in out inventory to store this item
             if ( !player.inventory().hasPlaceFor( this.itemStack() ) ) {
                 return;

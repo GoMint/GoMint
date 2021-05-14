@@ -76,12 +76,12 @@ public class CommandPreprocessor {
 
         // First we should scan all commands for aliases
         for (CommandHolder command : commands) {
-            if (command.getAlias() != null) {
-                for (String s : command.getAlias()) {
-                    this.addEnum(command.getName() + "CommandAlias", s);
+            if (command.alias() != null) {
+                for (String s : command.alias()) {
+                    this.addEnum(command.name() + "CommandAlias", s);
                 }
 
-                this.aliasIndex.put(command, this.enums.getIndex(command.getName() + "CommandAlias"));
+                this.aliasIndex.put(command, this.enums.getIndex(command.name() + "CommandAlias"));
             }
         }
 
@@ -89,17 +89,17 @@ public class CommandPreprocessor {
 
         // Now we need to search for enum validators
         for (CommandHolder command : commands) {
-            if (command.getOverload() != null) {
-                for (CommandOverload overload : command.getOverload()) {
+            if (command.overloads() != null) {
+                for (CommandOverload overload : command.overloads()) {
                     if (overload.permission().isEmpty() || player.hasPermission(overload.permission())) {
                         if (overload.parameters() != null) {
                             for (Map.Entry<String, ParamValidator<?>> entry : overload.parameters().entrySet()) {
                                 if (entry.getValue().hasValues()) {
                                     for (String s : entry.getValue().values()) {
-                                        this.addEnum(command.getName() + "#" + entry.getKey(), s);
+                                        this.addEnum(command.name() + "#" + entry.getKey(), s);
                                     }
 
-                                    this.enumIndexes.put(command.getName() + "#" + entry.getKey(), this.enums.getIndex(command.getName() + "#" + entry.getKey()));
+                                    this.enumIndexes.put(command.name() + "#" + entry.getKey(), this.enums.getIndex(command.name() + "#" + entry.getKey()));
                                 }
 
                                 if (entry.getValue().postfix() != null && !this.postfixes.contains(entry.getValue().postfix())) {
@@ -119,12 +119,12 @@ public class CommandPreprocessor {
         List<CommandData> commandDataList = new ArrayList<>();
         for (CommandHolder command : commands) {
             // Construct new data helper for the packet
-            CommandData commandData = new CommandData(command.getName(), command.getDescription());
+            CommandData commandData = new CommandData(command.name(), command.description());
             commandData.flags((byte) 0);
-            commandData.permission((byte) command.getCommandPermission().getId());
+            commandData.permission((byte) command.commandPermission().getId());
 
             // Put in alias index
-            if (command.getAlias() != null) {
+            if (command.alias() != null) {
                 commandData.aliasIndex(this.aliasIndex.get(command));
             } else {
                 commandData.aliasIndex(-1);
@@ -133,8 +133,8 @@ public class CommandPreprocessor {
             // Do we need to hack a bit here?
             List<List<CommandData.Parameter>> overloads = new ArrayList<>();
 
-            if (command.getOverload() != null) {
-                for (CommandOverload overload : command.getOverload()) {
+            if (command.overloads() != null) {
+                for (CommandOverload overload : command.overloads()) {
                     if (overload.permission().isEmpty() || player.hasPermission(overload.permission())) {
                         List<CommandData.Parameter> parameters = new ArrayList<>();
                         if (overload.parameters() != null) {
@@ -157,7 +157,7 @@ public class CommandPreprocessor {
                                     case STRING_ENUM:
                                         paramType |= ARG_FLAG_ENUM;
                                         paramType |= ARG_FLAG_VALID;
-                                        paramType |= this.enumIndexes.get(command.getName() + "#" + entry.getKey());
+                                        paramType |= this.enumIndexes.get(command.name() + "#" + entry.getKey());
                                         break;
                                     case TARGET:
                                         paramType |= ARG_FLAG_VALID;
@@ -182,7 +182,7 @@ public class CommandPreprocessor {
                                     case COMMAND:
                                         paramType |= ARG_FLAG_ENUM;
                                         paramType |= ARG_FLAG_VALID;
-                                        paramType |= this.enumIndexes.get(command.getName() + "#" + entry.getKey());
+                                        paramType |= this.enumIndexes.get(command.name() + "#" + entry.getKey());
                                         break;
                                     default:
                                         paramType |= ARG_FLAG_VALID;

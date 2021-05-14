@@ -26,4 +26,13 @@ public class PlayerCraftingEvent extends CancellablePlayerEvent<PlayerCraftingEv
         return this.recipe;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerCraftingEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", recipe=" + this.recipe +
+            '}';
+    }
+
 }

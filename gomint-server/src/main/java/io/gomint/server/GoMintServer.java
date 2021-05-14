@@ -13,14 +13,13 @@ import io.gomint.GoMint;
 import io.gomint.GoMintInstanceHolder;
 import io.gomint.config.InvalidConfigurationException;
 import io.gomint.enchant.Enchantment;
-import io.gomint.entity.Entity;
-import io.gomint.entity.EntityPlayer;
 import io.gomint.gui.ButtonList;
 import io.gomint.gui.CustomForm;
 import io.gomint.gui.Modal;
 import io.gomint.inventory.item.ItemStack;
 import io.gomint.permission.GroupManager;
 import io.gomint.player.PlayerSkin;
+import io.gomint.plugin.Plugin;
 import io.gomint.plugin.StartupPriority;
 import io.gomint.scoreboard.Scoreboard;
 import io.gomint.server.assets.AssetsLibrary;
@@ -29,6 +28,7 @@ import io.gomint.server.config.WorldConfig;
 import io.gomint.server.crafting.RecipeManager;
 import io.gomint.server.enchant.Enchantments;
 import io.gomint.server.entity.Entities;
+import io.gomint.server.entity.EntityPlayer;
 import io.gomint.server.entity.potion.Effects;
 import io.gomint.server.entity.tileentity.TileEntities;
 import io.gomint.server.inventory.CreativeInventory;
@@ -41,9 +41,9 @@ import io.gomint.server.network.Protocol;
 import io.gomint.server.network.upnp.UPNPClient;
 import io.gomint.server.permission.PermissionGroupManager;
 import io.gomint.server.plugin.SimplePluginManager;
-import io.gomint.server.scheduler.CoreScheduler;
-import io.gomint.server.scheduler.SyncTaskManager;
+import io.gomint.server.scheduler.AsyncScheduler;
 import io.gomint.server.util.ClassPath;
+import io.gomint.server.util.SimpleUncaughtExceptionHandler;
 import io.gomint.server.util.Values;
 import io.gomint.server.util.Watchdog;
 import io.gomint.server.world.WorldAdapter;
@@ -90,18 +90,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.jar.Manifest;
+import javax.annotation.Nonnull;
 
 /**
  * @author BlackyPaw
  * @author Clockw1seLrd
  * @author geNAZt
+ * @author Janmm14
  * @version 1.1
  */
 public class GoMintServer implements GoMint, InventoryHolder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GoMintServer.class);
+    private static final long ONE_SECOND_IN_NANOS = TimeUnit.SECONDS.toNanos(1);
     private static long mainThread;
 
     // Configuration
@@ -128,18 +132,13 @@ public class GoMintServer implements GoMint, InventoryHolder {
     private SimplePluginManager pluginManager;
 
     // Task Scheduling
-    private SyncTaskManager syncTaskManager;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean init = new AtomicBoolean(true);
     private ListeningScheduledExecutorService executorService;
     private Thread readerThread;
-    private long currentTickTime;
-    private long internalDiffTime;
     private long sleepBalance;
-    private CoreScheduler scheduler;
-
-    // Additional informations for API usage
     private double tps;
+    private AsyncScheduler scheduler;
 
     // Watchdog
     private Watchdog watchdog;
@@ -167,15 +166,16 @@ public class GoMintServer implements GoMint, InventoryHolder {
         // Executor Initialization
         // ------------------------------------ //
         this.executorService = MoreExecutors.listeningDecorator(Executors.newScheduledThreadPool(4, new ThreadFactory() {
-            private final AtomicLong counter = new AtomicLong(0);
+            private final AtomicLong counter = new AtomicLong(1);
 
             @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new Thread(r);
-                thread.setName("GoMint Thread #" + this.counter.incrementAndGet());
+            public Thread newThread(@Nonnull Runnable r) {
+                Thread thread = new Thread(r, "GoMint Thread #" + this.counter.getAndIncrement());
+                thread.setUncaughtExceptionHandler(SimpleUncaughtExceptionHandler.INSTANCE);
                 return thread;
             }
         }));
+        this.scheduler = new AsyncScheduler(this.executorService);
 
         this.watchdog = new Watchdog(this);
         this.watchdog.add(30, TimeUnit.SECONDS);
@@ -248,10 +248,8 @@ public class GoMintServer implements GoMint, InventoryHolder {
         this.loadConfig();
 
         // ------------------------------------ //
-        // Scheduler + WorldManager
+        // WorldManager
         // ------------------------------------ //
-        this.syncTaskManager = new SyncTaskManager();
-        this.scheduler = new CoreScheduler(this.executorService(), this.syncTaskManager());
         this.worldManager = new WorldManager(this);
 
         // PluginManager Initialization
@@ -335,6 +333,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
                 }
             }
         });
+        this.readerThread.setUncaughtExceptionHandler(SimpleUncaughtExceptionHandler.INSTANCE);
 
         this.readerThread.setName("GoMint CLI reader");
         this.readerThread.start();
@@ -348,7 +347,6 @@ public class GoMintServer implements GoMint, InventoryHolder {
         }
 
         this.defaultWorld = this.serverConfig.defaultWorld();
-        this.currentTickTime = System.currentTimeMillis();
 
         if (!this.isRunning()) {
             this.internalShutdown();
@@ -467,7 +465,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
             targetTPS = 1000;
         }
 
-        long skipNanos = TimeUnit.SECONDS.toNanos(1) / targetTPS;
+        long skipNanos = ONE_SECOND_IN_NANOS / targetTPS;
         LOGGER.info("Setting skipNanos to: {}", skipNanos);
 
         // Tick loop
@@ -475,9 +473,9 @@ public class GoMintServer implements GoMint, InventoryHolder {
 
         while (this.running.get()) {
             // Tick all major subsystems:
-            this.currentTickTime = System.currentTimeMillis();
-            this.internalDiffTime = System.nanoTime();
-            this.watchdog.add(this.currentTickTime, 30, TimeUnit.SECONDS);
+            long currentTickTime = System.currentTimeMillis();
+            long internalDiffTime = System.nanoTime();
+            this.watchdog.add(currentTickTime, 30, TimeUnit.SECONDS);
 
             // Drain input lines
             while (!inputLines.isEmpty()) {
@@ -496,11 +494,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
             }
 
             // Tick networking at every tick
-            this.networkManager.update(this.currentTickTime, lastTickTime);
-
-            this.syncTaskManager.update(this.currentTickTime);
-            this.worldManager.update(this.currentTickTime, lastTickTime);
-            this.permissionGroupManager.update(this.currentTickTime, lastTickTime);
+            this.networkManager.update(currentTickTime, lastTickTime);
 
             this.watchdog.done();
 
@@ -510,7 +504,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
             }
 
             long startSleep = System.nanoTime();
-            long diff = startSleep - this.internalDiffTime;
+            long diff = startSleep - internalDiffTime;
             boolean warn = false;
             if (diff <= skipNanos) {
                 long sleepNeeded = (skipNanos - diff) - this.sleepBalance;
@@ -529,7 +523,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
                 warn = true;
             }
 
-            lastTickTime = (float) diff / TimeUnit.SECONDS.toNanos(1);
+            lastTickTime = (float) diff / ONE_SECOND_IN_NANOS;
             this.tps = (1 / (double) lastTickTime);
 
             // Due to the fact that we
@@ -538,7 +532,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
             }
 
             if (warn) {
-                LOGGER.warn("Running behind: {} / {} tps", this.tps, (1 / (skipNanos / (float) TimeUnit.SECONDS.toNanos(1))));
+                LOGGER.warn("Running behind: {} / {} tps", this.tps, (1 / (skipNanos / (float) ONE_SECOND_IN_NANOS)));
             }
         }
 
@@ -554,11 +548,15 @@ public class GoMintServer implements GoMint, InventoryHolder {
         LOGGER.info("Uninstalled all plugins");
 
         if (this.networkManager != null) {
-            this.networkManager.shutdown();
+            this.networkManager.stopNewConnections();
         }
 
         if (this.worldManager != null) {
             this.worldManager.close();
+        }
+        
+        if (this.networkManager != null) {
+            this.networkManager.close();
         }
 
         LOGGER.info("Starting shutdown of the main executor");
@@ -668,7 +666,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public GoMint changeDefaultWorld(World world) {
+    public GoMintServer changeDefaultWorld(World world) {
         if (world == null) {
             LOGGER.warn("Can't set default world to null");
             return this;
@@ -684,7 +682,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public GoMint motd(String motd) {
+    public GoMintServer motd(String motd) {
         this.networkManager.motd(motd);
         return this;
     }
@@ -715,7 +713,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public <T extends Entity<T>> T createEntity(Class<T> entityClass) {
+    public <T extends io.gomint.entity.Entity<T>> T createEntity(Class<T> entityClass) {
         return this.entities.create(entityClass);
     }
 
@@ -755,8 +753,12 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public GoMint dispatchCommand(String line) {
-        this.pluginManager.commandManager().executeSystem(line);
+    public GoMintServer dispatchCommand(String line) {
+        if (Thread.currentThread().getId() == mainThread) {
+            this.pluginManager.commandManager().executeSystem(line);
+        } else {
+            addToMainThread(() -> this.pluginManager.commandManager().executeSystem(line));
+        }
         return this;
     }
 
@@ -767,11 +769,9 @@ public class GoMintServer implements GoMint, InventoryHolder {
 
     @Override
     public EntityPlayer findPlayerByName(String target) {
-        for (WorldAdapter adapter : this.worldManager.worlds()) {
-            for (EntityPlayer player : adapter.onlinePlayers()) {
-                if (player.name().equalsIgnoreCase(target)) {
-                    return player;
-                }
+        for (EntityPlayer player : this.playersByUUID.values()) {
+            if (player.name().equalsIgnoreCase(target)) {
+                return player;
             }
         }
 
@@ -789,11 +789,6 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public boolean mainThread() {
-        return GoMintServer.mainThread == Thread.currentThread().getId();
-    }
-
-    @Override
     public int maxPlayerCount() {
         return this.serverConfig.maxPlayers();
     }
@@ -804,10 +799,38 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public Collection<EntityPlayer> onlinePlayers() {
-        var playerList = new ArrayList<EntityPlayer>();
-        this.worldManager.worlds().forEach(world -> playerList.addAll(world.onlinePlayers()));
-        return playerList;
+    public Collection<io.gomint.entity.EntityPlayer> onlinePlayers() {
+        return new ArrayList<>(this.playersByUUID.values());
+    }
+
+    @Override
+    public GoMintServer onlinePlayers(Consumer<io.gomint.entity.EntityPlayer> playerConsumer) {
+        for (WorldAdapter world : this.worldManager.worlds()) {
+            world.syncScheduler().execute(() -> world.onlinePlayers().forEach(playerConsumer));
+        }
+        return this;
+    }
+
+    @Override
+    public Collection<io.gomint.entity.EntityPlayer> activeWorldsPlayers(Plugin plugin) {
+        ArrayList<io.gomint.entity.EntityPlayer> list = new ArrayList<>(currentPlayerCount());
+        for (EntityPlayer player : this.playersByUUID.values()) {
+            WorldAdapter world = player.world();
+            if (world != null && plugin.activeInWorld(world)) {
+                list.add(player);
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public GoMint activeWorldsPlayers(Plugin plugin, Consumer<io.gomint.entity.EntityPlayer> playerConsumer) {
+        for (WorldAdapter world : this.worldManager.worlds()) {
+            if (plugin.activeInWorld(world)) {
+                world.syncScheduler().execute(() -> world.onlinePlayers().forEach(playerConsumer));
+            }
+        }
+        return this;
     }
 
     @Override
@@ -821,7 +844,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public GoMint shutdown() {
+    public GoMintServer shutdown() {
         this.running.set(false);
         return this;
     }
@@ -842,8 +865,8 @@ public class GoMintServer implements GoMint, InventoryHolder {
     }
 
     @Override
-    public World world(String name) {
-        World world = this.worldManager.world(name);
+    public WorldAdapter world(String name) {
+        WorldAdapter world = this.worldManager.world(name);
         if (world == null) {
             // Try to load the world
 
@@ -869,10 +892,6 @@ public class GoMintServer implements GoMint, InventoryHolder {
         return this.creativeInventory;
     }
 
-    public long currentTickTime() {
-        return this.currentTickTime;
-    }
-
     public WorldConfig worldConfigOf(String name) {
         for (WorldConfig worldConfig : this.serverConfig.worlds()) {
             if (worldConfig.name().equals(name)) {
@@ -887,6 +906,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
         return this.recipeManager;
     }
 
+    @Override
     public boolean isRunning() {
         return this.running.get();
     }
@@ -911,15 +931,7 @@ public class GoMintServer implements GoMint, InventoryHolder {
         return this.playersByUUID;
     }
 
-    public SyncTaskManager syncTaskManager() {
-        return this.syncTaskManager;
-    }
-
-    public ListeningScheduledExecutorService executorService() {
-        return this.executorService;
-    }
-
-    public CoreScheduler scheduler() {
+    public AsyncScheduler asyncScheduler() {
         return this.scheduler;
     }
 

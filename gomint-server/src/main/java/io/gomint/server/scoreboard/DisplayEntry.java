@@ -26,14 +26,14 @@ public class DisplayEntry implements io.gomint.scoreboard.DisplayEntry {
     }
 
     @Override
-    public DisplayEntry score(int score ) {
-        this.scoreboard.updateScore( this.scoreId, score );
+    public DisplayEntry score(int score) {
+        this.scoreboard.updateScore(this.scoreId, score);
         return this;
     }
 
     @Override
     public int score() {
-        return this.scoreboard.getScore( this.scoreId );
+        return this.scoreboard.getScore(this.scoreId);
     }
 
 }

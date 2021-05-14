@@ -24,11 +24,12 @@ import java.util.Map;
 public class PluginsCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments, CommandOutput output) {
         Map<String, Plugin> plugins = GoMint.instance().pluginManager().plugins();
 
         if (plugins.isEmpty()) {
-            return CommandOutput.failure("No plugins were loaded.");
+            output.fail("No plugins were loaded.");
+            return;
         }
 
         StringBuilder stringBuilder = new StringBuilder("Plugins (§a" + plugins.size() + "§r): §a");
@@ -39,6 +40,6 @@ public class PluginsCommand extends Command {
 
         stringBuilder.setLength(stringBuilder.length() - 4);
 
-        return CommandOutput.successful(stringBuilder.toString());
+        output.success(stringBuilder.toString());
     }
 }

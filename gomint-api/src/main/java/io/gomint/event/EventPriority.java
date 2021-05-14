@@ -8,12 +8,19 @@
 package io.gomint.event;
 
 /**
+ * Importance of the {@link EventHandler} method. When executing an Event, the handlers
+ * are called in order of their Priority:
+ * <ol>
+ * <li>LOWEST</li>
+ * <li>LOW</li>
+ * <li>NORMAL (default)</li>
+ * <li>HIGH</li>
+ * <li>HIGHEST</li>
+ * </ol>
+ *
  * @author geNAZt
  * @version 1.0
  * @stability 3
- * <p>
- * Importance of the {@link EventHandler}. When executing an Event, the handlers
- * are called in order of their Priority.
  */
 public enum EventPriority {
 

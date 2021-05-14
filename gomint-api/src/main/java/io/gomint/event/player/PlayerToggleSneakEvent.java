@@ -25,4 +25,13 @@ public class PlayerToggleSneakEvent extends CancellablePlayerEvent<PlayerToggleS
         return this.newStatus;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerToggleSneakEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", newStatus=" + this.newStatus +
+            '}';
+    }
+
 }

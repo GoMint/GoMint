@@ -25,4 +25,11 @@ public class EntityDespawnEvent extends SimpleEntityEvent {
         super(entity);
     }
 
+    @Override
+    public String toString() {
+        return "EntityDespawnEvent{" +
+            "entity=" + this.entity() +
+            '}';
+    }
+
 }

@@ -45,20 +45,20 @@ public class ScoreboardDisplay implements io.gomint.scoreboard.ScoreboardDisplay
     }
 
     @Override
-    public DisplayEntry addEntity( Entity<?> entity, int score ) {
-        long scoreId = this.scoreboard.addOrUpdateEntity( (io.gomint.server.entity.Entity<?>) entity, this.objectiveName, score );
-        return new io.gomint.server.scoreboard.DisplayEntry( this.scoreboard, scoreId );
+    public DisplayEntry addEntity(Entity<?> entity, int score) {
+        long scoreId = this.scoreboard.addOrUpdateEntity((io.gomint.server.entity.Entity<?>) entity, this.objectiveName, score);
+        return new io.gomint.server.scoreboard.DisplayEntry(this.scoreboard, scoreId);
     }
 
     @Override
-    public DisplayEntry addLine( String line, int score ) {
-        long scoreId = this.scoreboard.addOrUpdateLine( line, this.objectiveName, score );
-        return new io.gomint.server.scoreboard.DisplayEntry( this.scoreboard, scoreId );
+    public DisplayEntry addLine(String line, int score) {
+        long scoreId = this.scoreboard.addOrUpdateLine(line, this.objectiveName, score);
+        return new io.gomint.server.scoreboard.DisplayEntry(this.scoreboard, scoreId);
     }
 
     @Override
-    public ScoreboardDisplay removeEntry( DisplayEntry entry ) {
-        this.scoreboard.removeScoreEntry( ( (io.gomint.server.scoreboard.DisplayEntry) entry ).scoreId() );
+    public ScoreboardDisplay removeEntry(DisplayEntry entry) {
+        this.scoreboard.removeScoreEntry(((io.gomint.server.scoreboard.DisplayEntry) entry).scoreId());
         return this;
     }
 

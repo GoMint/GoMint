@@ -60,6 +60,16 @@ public class PlayerExhaustEvent extends CancellablePlayerEvent<PlayerExhaustEven
         return this.cause;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerExhaustEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", cause=" + this.cause +
+            ", additionalAmount=" + this.additionalAmount +
+            '}';
+    }
+
     public enum Cause {
         /**
          * This exhaustion is 0.01 * distance travelled and is called when a player walks

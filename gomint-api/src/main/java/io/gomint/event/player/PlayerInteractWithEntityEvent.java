@@ -34,17 +34,27 @@ public class PlayerInteractWithEntityEvent extends CancellablePlayerEvent<Player
 
     /**
      * Get the player which is affected by this event.
-     * 
-     * <b>Be careful! This method used to return the entity interacted with before 2.0</b>
+     * <br><br>
+     * <b>Be careful! This method used to return the entity interacted with before</b>
      * 
      * @return the player which is affected by this event
      * @see #player() 
      * @see #interactEntity() 
+     * @deprecated Use {@linkplain #player()} or if you want the entity interacted with use {@linkplain #interactEntity()}
      */
     @Override
     @Deprecated(since = "2.0")
     public EntityPlayer entity() {
         return super.entity();
+    }
+
+    @Override
+    public String toString() {
+        return "PlayerInteractWithEntityEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player() +
+            ", interactEntity=" + this.interactEntity +
+            '}';
     }
 
 }

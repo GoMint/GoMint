@@ -58,6 +58,17 @@ public class EntityTeleportEvent extends CancellableEntityEvent<EntityTeleportEv
         return this.cause;
     }
 
+    @Override
+    public String toString() {
+        return "EntityTeleportEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", entity=" + this.entity() +
+            ", from=" + this.from +
+            ", to=" + this.to +
+            ", cause=" + this.cause +
+            '}';
+    }
+
     public enum Cause {
 
         /**

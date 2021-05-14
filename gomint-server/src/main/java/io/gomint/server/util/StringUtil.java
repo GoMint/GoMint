@@ -40,6 +40,13 @@ public class StringUtil {
         return true;
     }
 
+    public static boolean endsWith(String subject, char c) {
+        if (subject.isEmpty()) {
+            return false;
+        }
+        return subject.charAt(subject.length() - 1) == c;
+    }
+
     /**
      * Get byte encoding from UTF8 string
      *

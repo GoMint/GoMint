@@ -3,7 +3,11 @@ package io.gomint.server.command.gomint;
 import io.gomint.command.Command;
 import io.gomint.command.CommandOutput;
 import io.gomint.command.CommandSender;
-import io.gomint.command.annotation.*;
+import io.gomint.command.annotation.Description;
+import io.gomint.command.annotation.Name;
+import io.gomint.command.annotation.Overload;
+import io.gomint.command.annotation.Parameter;
+import io.gomint.command.annotation.Permission;
 import io.gomint.command.validator.TargetValidator;
 import io.gomint.command.validator.TextValidator;
 import io.gomint.server.entity.EntityPlayer;
@@ -25,19 +29,25 @@ import java.util.Map;
 public class KickCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         EntityPlayer target = (EntityPlayer) arguments.get("player");
-        String reason = "Kicked by an operator.";
 
         if (target == null) {
-            return CommandOutput.failure("You must provide a player!");
+            output.fail("You must provide a player!");
+            return;
         }
 
-        if (arguments.containsKey("reason")) {
-            reason = (String) arguments.get("reason");
-        }
+        String reason = (String) arguments.getOrDefault("reason", "Kicked by an operator.");
 
-        target.disconnect(reason);
-        return CommandOutput.successful("Kicked %%s from the server", target.displayName());
+        if (sender.world() != target.world()) {
+            output.markAsync();
+            target.world().syncScheduler().execute(() -> {
+                target.disconnect(reason);
+                output.fail("Kicked %%s from the server", target.displayName()).markFinished();
+            });
+        } else {
+            target.disconnect(reason);
+            output.fail("Kicked %%s from the server", target.displayName());
+        }
     }
 }

@@ -14,7 +14,7 @@ import io.gomint.world.World;
  * Marks an event that takes place in relation to an entity
  *
  * @author Janmm14
- * @version 2.0
+ * @version 1.0
  * @stability 1
  */
 public interface EntityEvent extends WorldEvent {

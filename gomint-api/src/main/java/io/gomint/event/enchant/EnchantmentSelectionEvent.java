@@ -78,4 +78,12 @@ public class EnchantmentSelectionEvent extends SimplePlayerEvent {
         return Collections.unmodifiableList(this.enchantmentOptions);
     }
 
+    @Override
+    public String toString() {
+        return "EnchantmentSelectionEvent{" +
+            "player=" + this.player() +
+            ", enchantmentOptions=" + this.enchantmentOptions +
+            '}';
+    }
+
 }

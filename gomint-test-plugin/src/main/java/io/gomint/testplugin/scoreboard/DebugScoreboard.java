@@ -63,7 +63,7 @@ public class DebugScoreboard {
         this.format.setMinimumFractionDigits( 2 );
 
         // Schedule updated for this scoreboard
-        plugin.scheduler().schedule( this::update, 1, 1, TimeUnit.MILLISECONDS );
+        plugin.scheduler().scheduleAsync( this::update, 50, 50, TimeUnit.MILLISECONDS );
 
         // Add player to scoreboard
         player.scoreboard( scoreboard );
@@ -121,13 +121,14 @@ public class DebugScoreboard {
     }
 
     private void updateTPS() {
-        if ( this.oldTPS != GoMint.instance().tps() ) {
+        double tps = this.player.world().tps();
+        if ( this.oldTPS != tps) {
             // Remove the old entry
             this.display.removeEntry( this.tpsEntry );
-            this.tpsEntry = this.display.addLine( ChatColor.GREEN + this.format.format( GoMint.instance().tps() ), 2 );
+            this.tpsEntry = this.display.addLine( ChatColor.GREEN + this.format.format( tps ), 2 );
 
             // Update cache
-            this.oldTPS = GoMint.instance().tps();
+            this.oldTPS = tps;
         }
     }
 

@@ -6,7 +6,7 @@
   ~ LICENSE file in the root directory of this source tree.
   -->
 
-<Configuration status="INFO" packages="net.minecrell.terminalconsole,io.gomint.server.logging">
+<Configuration status="${env:LOG_LEVEL:-INFO}" packages="net.minecrell.terminalconsole,io.gomint.server.logging">
     <Appenders>
         <TerminalConsole name="Console">
             <PatternLayout pattern="%highlight{%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %minecraftFormatting{%msg}%n}{FATAL=red, ERROR=red, WARN=yellow, INFO=normal, DEBUG=teal}"/>
@@ -21,7 +21,7 @@
         </RollingRandomAccessFile>
     </Appenders>
     <Loggers>
-        <Root level="INFO">
+        <Root level="${env:LOG_LEVEL:-INFO}">
             <AppenderRef ref="File"/>
             <AppenderRef ref="Console"/>
         </Root>

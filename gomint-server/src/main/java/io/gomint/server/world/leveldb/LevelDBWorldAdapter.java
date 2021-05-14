@@ -19,6 +19,7 @@ import io.gomint.server.entity.EntityPlayer;
 import io.gomint.server.plugin.PluginClassloader;
 import io.gomint.server.util.Allocator;
 import io.gomint.server.util.DumpUtil;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.util.Values;
 import io.gomint.server.world.BlockRuntimeIDs;
 import io.gomint.server.world.ChunkAdapter;
@@ -435,6 +436,7 @@ public class LevelDBWorldAdapter extends WorldAdapter {
 
     @Override
     public ChunkAdapter loadChunk(int x, int z, boolean generate) {
+        Precondition.safeWorldAccess(this, true);
         ChunkAdapter chunk = this.chunkCache.getChunk(x, z);
         if (chunk == null) {
             DB.Snapshot snapshot = this.db.getSnapshot();

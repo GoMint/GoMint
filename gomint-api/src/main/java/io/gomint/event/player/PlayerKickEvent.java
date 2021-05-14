@@ -33,4 +33,12 @@ public class PlayerKickEvent extends SimplePlayerEvent {
         return this.message;
     }
 
+    @Override
+    public String toString() {
+        return "PlayerKickEvent{" +
+            "player=" + this.player() +
+            ", message='" + this.message + '\'' +
+            '}';
+    }
+
 }

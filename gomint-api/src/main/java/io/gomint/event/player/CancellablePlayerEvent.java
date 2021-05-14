@@ -31,4 +31,12 @@ public class CancellablePlayerEvent<E> extends CancellableEvent<E> implements Pl
         return this.player;
     }
 
+    @Override
+    public String toString() {
+        return "CancellablePlayerEvent{" +
+            "cancelled=" + this.cancelled() +
+            ", player=" + this.player +
+            '}';
+    }
+
 }

@@ -13,7 +13,6 @@ import io.gomint.command.CommandOutput;
 import io.gomint.command.PlayerCommandSender;
 import io.gomint.enchant.EnchantmentKnockback;
 import io.gomint.enchant.EnchantmentSharpness;
-import io.gomint.player.ChatType;
 import io.gomint.entity.Entity;
 import io.gomint.entity.potion.PotionEffect;
 import io.gomint.event.entity.EntityDamageByEntityEvent;
@@ -21,31 +20,71 @@ import io.gomint.event.entity.EntityDamageEvent;
 import io.gomint.event.entity.EntityTeleportEvent;
 import io.gomint.event.inventory.InventoryCloseEvent;
 import io.gomint.event.inventory.InventoryOpenEvent;
-import io.gomint.event.player.*;
+import io.gomint.event.player.PlayerDeathEvent;
+import io.gomint.event.player.PlayerExhaustEvent;
+import io.gomint.event.player.PlayerFoodLevelChangeEvent;
+import io.gomint.event.player.PlayerJoinEvent;
+import io.gomint.event.player.PlayerMoveEvent;
+import io.gomint.event.player.PlayerRespawnEvent;
+import io.gomint.event.player.PlayerWorldJoinEvent;
+import io.gomint.event.player.PlayerWorldLeaveEvent;
 import io.gomint.gui.Form;
 import io.gomint.gui.FormListener;
+import io.gomint.math.AxisAlignedBB;
+import io.gomint.math.BlockPosition;
+import io.gomint.math.Location;
+import io.gomint.math.MathUtils;
 import io.gomint.math.Vector;
-import io.gomint.math.*;
+import io.gomint.math.Vector2;
+import io.gomint.player.ChatType;
 import io.gomint.player.DeviceInfo;
 import io.gomint.plugin.Plugin;
-import io.gomint.server.GoMintServer;
 import io.gomint.server.entity.metadata.MetadataContainer;
 import io.gomint.server.entity.passive.EntityHuman;
 import io.gomint.server.entity.projectile.EntityFishingHook;
-import io.gomint.server.inventory.*;
+import io.gomint.server.inventory.ArmorInventory;
+import io.gomint.server.inventory.ContainerInventory;
+import io.gomint.server.inventory.CraftingInputInventory;
+import io.gomint.server.inventory.CursorInventory;
+import io.gomint.server.inventory.EnderChestInventory;
+import io.gomint.server.inventory.Inventory;
+import io.gomint.server.inventory.InventoryHolder;
+import io.gomint.server.inventory.OffhandInventory;
+import io.gomint.server.inventory.OneSlotInventory;
+import io.gomint.server.inventory.PlayerInventory;
+import io.gomint.server.inventory.WindowMagicNumbers;
 import io.gomint.server.inventory.item.ItemAir;
 import io.gomint.server.inventory.item.ItemStack;
 import io.gomint.server.maintenance.performance.LoginPerformance;
 import io.gomint.server.network.PlayerConnection;
 import io.gomint.server.network.PlayerConnectionState;
-import io.gomint.server.network.packet.*;
+import io.gomint.server.network.packet.Packet;
+import io.gomint.server.network.packet.PacketAvailableCommands;
+import io.gomint.server.network.packet.PacketAvailableEntityIdentifiers;
+import io.gomint.server.network.packet.PacketBiomeDefinitionList;
+import io.gomint.server.network.packet.PacketContainerClose;
+import io.gomint.server.network.packet.PacketEntityEvent;
+import io.gomint.server.network.packet.PacketItemComponent;
+import io.gomint.server.network.packet.PacketModalRequest;
+import io.gomint.server.network.packet.PacketPlayState;
+import io.gomint.server.network.packet.PacketPlayerlist;
+import io.gomint.server.network.packet.PacketRespawnPosition;
 import io.gomint.server.network.packet.PacketRespawnPosition.RespawnState;
+import io.gomint.server.network.packet.PacketServerSettingsResponse;
+import io.gomint.server.network.packet.PacketSetGamemode;
+import io.gomint.server.network.packet.PacketSetTitle;
+import io.gomint.server.network.packet.PacketSpawnPlayer;
+import io.gomint.server.network.packet.PacketText;
+import io.gomint.server.network.packet.PacketTransfer;
+import io.gomint.server.network.packet.PacketUpdateAttributes;
+import io.gomint.server.network.packet.PacketWorldEvent;
 import io.gomint.server.permission.PermissionManager;
 import io.gomint.server.player.EntityVisibilityManager;
 import io.gomint.server.plugin.EventCaller;
 import io.gomint.server.scoreboard.Scoreboard;
 import io.gomint.server.util.CallerDetectorUtil;
 import io.gomint.server.util.EnumConnectors;
+import io.gomint.server.util.Precondition;
 import io.gomint.server.util.Values;
 import io.gomint.server.world.ChunkAdapter;
 import io.gomint.server.world.CoordinateUtils;
@@ -64,12 +103,21 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import javax.annotation.Nonnull;
 
 /**
  * The entity implementation for players. Players are considered living entities even though they
@@ -81,7 +129,7 @@ import java.util.concurrent.TimeUnit;
  * @author BlackyPaw
  * @version 1.0
  */
-public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> implements io.gomint.entity.EntityPlayer, InventoryHolder, PlayerCommandSender<EntityPlayer> {
+public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> implements io.gomint.entity.EntityPlayer, InventoryHolder, PlayerCommandSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EntityPlayer.class);
 
@@ -220,7 +268,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
         if (this.connection.state() == PlayerConnectionState.LOGIN) {
             this.connection.addToSendQueue(new PacketBiomeDefinitionList());
             this.connection.sendPlayState(PacketPlayState.PlayState.SPAWN);
-            this.loginPerformance().setChunkStart(this.world.server().currentTickTime());
+            this.loginPerformance().setChunkStart(this.world.currentTickTime());
         }
 
         this.connection.onViewDistanceChanged();
@@ -387,6 +435,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
     @Override
     public EntityPlayer teleport(Location to, EntityTeleportEvent.Cause cause) {
+        Precondition.safeWorldAccess(this.world, false);
         // Only teleport when online
         if (!online()) {
             return this;
@@ -403,40 +452,61 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
         // Reset chunks
         this.connection.resetQueuedChunks();
 
+        Chunk fromChunk = this.chunk();
+
         // Check if we need to change worlds
         if (!to.world().equals(from.world())) {
+            this.world.server().pluginManager().callEvent(new PlayerWorldLeaveEvent(this, to.world()));
+
             // Despawn entities first
             this.entityVisibilityManager.clear();
 
-            // Change worlds
+            // Remove from old world
             world().removePlayer(this);
-            this.world((WorldAdapter) to.world());
-            this.world.spawnEntityAt(this, to.x(), to.y(), to.z(), to.yaw(), to.pitch());
 
-            // Be sure to get rid of all loaded chunks
-            this.connection.resetPlayerChunks();
+            this.world.syncScheduler().execute(() -> {
+                //Add to new world
+                this.world((WorldAdapter) to.world());
 
-            // Send all packets needed for a world switch
-            this.world.playerSwitched(this);
+                // Set the new location
+                this.setAndRecalcPosition(to);
+                
+                // Resend commands (world-restrictions)
+                this.sendCommands();
+
+                this.world.server().pluginManager().callEvent(new PlayerWorldJoinEvent(this, from.world()));
+                this.world.spawnEntityAt(this, to.x(), to.y(), to.z(), to.yaw(), to.pitch());
+
+                // Be sure to get rid of all loaded chunks
+                this.connection.resetPlayerChunks();
+
+                // Send all packets needed for a world switch
+                this.world.playerSwitched(this);
+                teleport0(fromChunk, from, to);
+            });
+        } else {
+            // Set the new location
+            this.setAndRecalcPosition(to);
+
+            teleport0(fromChunk, from, to);
         }
-
+        return this;
+    }
+    
+    private void teleport0(Chunk fromChunk, Location from, Location to) {
         // Check for attached entities
         if (!this.getAttachedEntities().isEmpty()) {
-            Chunk chunk = this.chunk();
             for (Entity<?> entity : new HashSet<>(this.getAttachedEntities())) {
                 if (entity instanceof EntityPlayer) {
                     EntityPlayer player = (EntityPlayer) entity;
                     Chunk playerChunk = player.chunk();
-                    if (Math.abs(playerChunk.x() - chunk.x()) > player.viewDistance() &&
-                        Math.abs(playerChunk.z() - chunk.z()) > player.viewDistance()) {
+                    if (Math.abs(playerChunk.x() - fromChunk.x()) > player.viewDistance() &&
+                        Math.abs(playerChunk.z() - fromChunk.z()) > player.viewDistance()) {
                         player.entityVisibilityManager().removeEntity(this);
                     }
                 }
             }
         }
-
-        // Set the new location
-        this.setAndRecalcPosition(to);
 
         // Force load the new spawn chunk
         this.chunk(); // This getChunk uses loadChunk so it will generate or load from disc if needed
@@ -450,8 +520,6 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
         // Tell the movement handler to force this position to the client
         this.teleportPosition = to;
-
-        return this;
     }
 
     @Override
@@ -652,7 +720,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
         }
 
         if (updateAttributes != null) {
-            updateAttributes.setTick(this.world().server().currentTickTime() / (int) Values.CLIENT_TICK_MS);
+            updateAttributes.setTick(this.world.currentTickTime() / (int) Values.CLIENT_TICK_MS);
             this.connection.addToSendQueue(updateAttributes);
         }
     }
@@ -663,7 +731,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
     public void resendAttributes() {
         PacketUpdateAttributes updateAttributes = new PacketUpdateAttributes();
         updateAttributes.setEntityId(this.id());
-        updateAttributes.setTick(this.world().server().currentTickTime() / (int) Values.CLIENT_TICK_MS);
+        updateAttributes.setTick(this.world.currentTickTime() / (int) Values.CLIENT_TICK_MS);
 
         for (AttributeInstance instance : this.attributes.values()) {
             updateAttributes.addAttributeInstance(instance);
@@ -794,7 +862,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
         // Check all entities
         for (WorldAdapter worldAdapter : this.connection.server().worldManager().worlds()) {
-            worldAdapter.iterateEntities(Entity.class, entity -> {
+            worldAdapter.syncScheduler().execute(() -> worldAdapter.iterateAllEntities(entity -> {
                 if (entity instanceof EntityPlayer) {
                     EntityPlayer entityPlayer = (EntityPlayer) entity;
                     if (!entityPlayer.equals(EntityPlayer.this)) {
@@ -815,7 +883,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
                 } else {
                     entity.hideFor(EntityPlayer.this);
                 }
-            });
+            }));
         }
     }
 
@@ -1394,7 +1462,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
      * @param xpAmount which should be added
      */
     public void addXP(int xpAmount) {
-        this.lastPickupXP = this.world.server().currentTickTime();
+        this.lastPickupXP = this.world.currentTickTime();
         this.xp(this.xp + xpAmount);
     }
 
@@ -1404,7 +1472,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
      * @return
      */
     public boolean canPickupXP() {
-        return this.world.server().currentTickTime() - this.lastPickupXP >= Values.CLIENT_TICK_MS;
+        return this.world.currentTickTime() - this.lastPickupXP >= Values.CLIENT_TICK_MS;
     }
 
     private int calculateRequiredExperienceForLevel(int level) {
@@ -1546,14 +1614,14 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
     public void firstSpawn() {
         // Set location
-        this.connection().sendMovePlayer(this.location());
+        this.connection.sendMovePlayer(this.location());
 
         // Set simulation speed
         PacketWorldEvent worldEvent = new PacketWorldEvent();
         worldEvent.setData(0);
         worldEvent.setEventId(LevelEvent.SIM_SPEED);
         worldEvent.setPosition(new Vector(1f, 1f, 1f));
-        this.connection().addToSendQueue(worldEvent);
+        this.connection.addToSendQueue(worldEvent);
 
         // Spawn for others
         this.world().spawnEntityAt(this, this.positionX(), this.positionY(), this.positionZ(), this.yaw(), this.pitch());
@@ -1573,8 +1641,9 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
         this.hasCompletedLogin = true;
 
         // Send network chunk publisher packet after join
-        this.world.server().scheduler().schedule(() -> {
+        this.world.syncScheduler().schedule(() -> {
             if (online()) {
+                this.world.server().pluginManager().callEvent(new PlayerWorldJoinEvent(this, null));
                 connection().sendNetworkChunkPublisher();
             }
         }, 250, TimeUnit.MILLISECONDS);
@@ -1663,8 +1732,9 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
     }
 
     @Override
-    public CommandOutput dispatchCommand(String command) {
-        return this.connection().server().pluginManager().commandManager().dispatchCommand(this, command);
+    public EntityPlayer dispatchCommand(String command, Consumer<CommandOutput> outputConsumer) {
+        this.connection().server().pluginManager().commandManager().dispatchCommand(this, command, outputConsumer);
+        return this;
     }
 
     @Override
@@ -1676,6 +1746,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
     @Override
     public EntityPlayer scoreboard(io.gomint.scoreboard.Scoreboard scoreboard) {
+        Precondition.safeWorldAccess(this.world, false);
         this.removeScoreboard();
 
         this.scoreboard = (Scoreboard) scoreboard;
@@ -1685,6 +1756,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
     @Override
     public EntityPlayer removeScoreboard() {
+        Precondition.safeWorldAccess(this.world, false);
         if (this.scoreboard != null) {
             this.scoreboard.hideFor(this);
             this.scoreboard = null;
@@ -1695,7 +1767,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
 
     public void setUsingItem(boolean value) {
         if (value) {
-            this.actionStart = ((GoMintServer) GoMint.instance()).currentTickTime();
+            this.actionStart = this.world.currentTickTime();
             this.metadataContainer.setDataFlag(MetadataContainer.DATA_INDEX, EntityFlag.ACTION, true);
         } else {
             this.actionStart = -1;
@@ -1870,7 +1942,7 @@ public class EntityPlayer extends EntityHuman<io.gomint.entity.EntityPlayer> imp
     }
 
     public void resetActionStart() {
-        this.actionStart = ((GoMintServer) GoMint.instance()).currentTickTime();
+        this.actionStart = this.world.currentTickTime();
     }
 
     @Override

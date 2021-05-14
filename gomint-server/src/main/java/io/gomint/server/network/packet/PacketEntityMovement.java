@@ -13,7 +13,7 @@ import io.gomint.server.network.Protocol;
 /**
  * @author BlackyPaw
  * @author geNAZt
- * @version 2.0
+ * @version 1.0
  */
 public class PacketEntityMovement extends Packet {
 

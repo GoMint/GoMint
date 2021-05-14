@@ -11,6 +11,7 @@ import io.gomint.command.annotation.Permission;
 import io.gomint.command.validator.TargetValidator;
 import io.gomint.entity.EntityPlayer;
 import io.gomint.event.entity.EntityDamageEvent;
+import io.gomint.server.world.WorldAdapter;
 
 import java.util.Map;
 
@@ -27,15 +28,23 @@ import java.util.Map;
 public class KillCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments) {
-        EntityPlayer target = (EntityPlayer) arguments.getOrDefault("target", commandSender);
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
+        EntityPlayer target = (EntityPlayer) arguments.getOrDefault("target", sender);
 
         if (target == null) {
-            return CommandOutput.failure("No targets matched selector.");
+            output.fail("No targets matched selector.");
+            return;
         }
 
-        target.attack(target.maxHealth(), EntityDamageEvent.DamageSource.COMMAND);
-
-        return CommandOutput.successful("Killed " + target.name());
+        if (sender.world() != target.world()) {
+            output.markAsync();
+            ((WorldAdapter) target.world()).syncScheduler().execute(() -> {
+                target.attack(target.maxHealth(), EntityDamageEvent.DamageSource.COMMAND);
+                output.success("Killed " + target.name()).markFinished();
+            });
+        } else {
+            target.attack(target.maxHealth(), EntityDamageEvent.DamageSource.COMMAND);
+            output.success("Killed " + target.name());
+        }
     }
 }

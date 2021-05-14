@@ -13,4 +13,11 @@ public class PluginUninstallEvent extends PluginEvent {
         super(plugin);
     }
 
+    @Override
+    public String toString() {
+        return "PluginUninstallEvent{" +
+            "plugin=" + this.plugin() +
+            '}';
+    }
+
 }

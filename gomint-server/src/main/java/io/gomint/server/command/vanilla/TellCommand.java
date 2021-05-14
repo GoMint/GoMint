@@ -25,20 +25,22 @@ import java.util.Map;
 })
 public class TellCommand extends Command {
     @Override
-    public CommandOutput execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> commandSender, String alias, Map<String, Object> arguments, CommandOutput output) {
         EntityPlayer target = (EntityPlayer) arguments.get("player");
         EntityPlayer sender = (EntityPlayer) commandSender;
 
         String message = (String) arguments.get("message");
         if (target == null) {
-            return CommandOutput.failure("You must provide a player!");
+            output.fail("You must provide a player!");
+            return;
         }
 
         if (message == null) {
-            return CommandOutput.failure("You must provide a message!");
+            output.fail("You must provide a message!");
+            return;
         }
 
         target.sendMessage(String.format("<%s> %s whispers to you: %s", sender.name(), sender.name(), message));
-        return CommandOutput.successful("You whisper to %%s: %%s", target.name(), message);
+        output.success("You whisper to %%s: %%s", target.name(), message);
     }
 }

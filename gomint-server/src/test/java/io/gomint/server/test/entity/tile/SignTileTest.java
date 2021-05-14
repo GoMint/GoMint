@@ -9,6 +9,7 @@ package io.gomint.server.test.entity.tile;
 
 import io.gomint.server.entity.tileentity.SignTileEntity;
 import io.gomint.server.test.IntegrationTest;
+import io.gomint.server.test.WorldTestUtil;
 import io.gomint.server.world.WorldAdapter;
 import io.gomint.server.world.block.Air;
 import io.gomint.server.world.block.WallSign;
@@ -46,11 +47,16 @@ public class SignTileTest extends IntegrationTest {
         this.world = (WorldAdapter) this.server.createWorld("test", new CreateOptions()
             .worldType(WorldType.IN_MEMORY)
             .generator(LayeredGenerator.class));
+        WorldTestUtil.blockUntilWorldRuns(this.world);
     }
 
     @Test
     @Order(2)
-    public void throwOnTooMuchLines() throws Exception {
+    public void throwOnTooMuchLines() {
+        WorldTestUtil.runInWorldThread(this.world, this::throwOnTooMuchLines0);
+    }
+
+    private void throwOnTooMuchLines0() {
         Assertions.assertThrows(IllegalArgumentException.class, () -> {
             SignTileEntity tileEntity = new SignTileEntity(this.getBlock(), null);
 
@@ -62,7 +68,11 @@ public class SignTileTest extends IntegrationTest {
 
     @Test
     @Order(3)
-    public void accept3Lines() throws Exception {
+    public void accept3Lines() {
+        WorldTestUtil.runInWorldThread(this.world, this::accept3Lines0);
+    }
+
+    private void accept3Lines0() throws Exception {
         SignTileEntity tileEntity = new SignTileEntity(this.getBlock(), null);
 
         NBTTagCompound compound = new NBTTagCompound("");
@@ -72,7 +82,11 @@ public class SignTileTest extends IntegrationTest {
 
     @Test
     @Order(4)
-    public void throwOnTooLongLine() throws Exception {
+    public void throwOnTooLongLine() {
+        WorldTestUtil.runInWorldThread(this.world, this::throwOnTooLongLine0);
+    }
+
+    private void throwOnTooLongLine0() {
         Assertions.assertThrows(IllegalArgumentException.class, () -> {
             SignTileEntity tileEntity = new SignTileEntity(this.getBlock(), null);
 

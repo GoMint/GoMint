@@ -12,7 +12,10 @@ import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * @author geNAZt
@@ -20,25 +23,18 @@ import java.util.Objects;
  */
 public class PermissionGroup implements Group {
 
-    private final PermissionGroupManager manager;
     private final String name;
 
-    private boolean dirty;
     private Object2BooleanMap<String> permissions;
+    private final Set<PermissionManager> attachedTo = Collections.newSetFromMap(new WeakHashMap<>());
 
     /**
      * Create a new permission group. This needs to be configured via
      *
-     * @param manager which created this group
      * @param name    of the group
      */
-    PermissionGroup( PermissionGroupManager manager, String name ) {
+    PermissionGroup(String name) {
         this.name = name;
-        this.manager = manager;
-    }
-
-    public boolean isDirty() {
-        return this.dirty;
     }
 
     @Override
@@ -53,8 +49,7 @@ public class PermissionGroup implements Group {
         }
 
         this.permissions.put( permission, value );
-        this.dirty = true;
-        this.manager.setDirty( true );
+        markDirty();
         return this;
     }
 
@@ -64,8 +59,7 @@ public class PermissionGroup implements Group {
             this.permissions.remove( permission );
         }
 
-        this.dirty = true;
-        this.manager.setDirty( true );
+        markDirty();
         return this;
     }
 
@@ -78,11 +72,18 @@ public class PermissionGroup implements Group {
         return this.permissions.object2BooleanEntrySet();
     }
 
-    /**
-     * Reset dirty state
-     */
-    void resetDirty() {
-        this.dirty = false;
+    private synchronized void markDirty() {
+        for (PermissionManager attached : this.attachedTo) {
+            attached.markDirty(this);
+        }
+    }
+
+    synchronized void addAttached(PermissionManager attached) {
+        this.attachedTo.add(attached);
+    }
+
+    synchronized void removeAttached(PermissionManager attached) {
+        this.attachedTo.remove(attached);
     }
 
     /**

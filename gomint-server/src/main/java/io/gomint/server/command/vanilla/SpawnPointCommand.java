@@ -27,9 +27,10 @@ import java.util.Map;
 public class SpawnPointCommand extends Command {
 
     @Override
-    public CommandOutput execute(CommandSender<?> sender, String alias, Map<String, Object> arguments) {
+    public void execute(CommandSender<?> sender, String alias, Map<String, Object> arguments, CommandOutput output) {
         if (!(sender instanceof PlayerCommandSender)) {
-            return CommandOutput.failure("Executor is required to be a player");
+            output.fail("Executor is required to be a player");
+            return;
         }
 
         EntityPlayer player = (EntityPlayer) arguments.getOrDefault("player", sender);
@@ -43,6 +44,6 @@ public class SpawnPointCommand extends Command {
         }
 
         player.spawnLocation(location);
-        return CommandOutput.successful(String.format("Set %s's spawn point to (%.1f, %.1f, %.1f)", player.name(), location.x(), location.y(), location.z()));
+        output.success(String.format("Set %s's spawn point to (%.1f, %.1f, %.1f)", player.name(), location.x(), location.y(), location.z()));
     }
 }

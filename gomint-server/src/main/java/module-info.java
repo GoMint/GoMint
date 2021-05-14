@@ -64,4 +64,5 @@ module gomint.server {
     exports io.gomint.server.util.collection to gomint.test;
     exports io.gomint.server.util.performance;
     exports io.gomint.server.inventory.item to gomint.test;
+    exports io.gomint.server.scheduler to gomint.test;
 }
