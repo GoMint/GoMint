@@ -14,7 +14,6 @@ package io.gomint.world.block.data;
  */
 public enum GlassColor {
 
-    TRANSPARENT,
     WHITE,
     ORANGE,
     MAGENTA,
@@ -30,6 +29,7 @@ public enum GlassColor {
     BROWN,
     GREEN,
     RED,
-    BLACK
+    BLACK,
+    TRANSPARENT,
 
 }

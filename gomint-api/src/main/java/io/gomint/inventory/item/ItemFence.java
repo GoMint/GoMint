@@ -1,6 +1,7 @@
 package io.gomint.inventory.item;
 
 import io.gomint.GoMint;
+import io.gomint.world.block.data.LogType;
 
 /**
  * @author geNAZt
@@ -19,4 +20,17 @@ public interface ItemFence extends ItemStack<ItemFence>, ItemBurnable {
         return GoMint.instance().createItemStack( ItemFence.class, amount );
     }
 
+    /**
+     * Set the type of fence
+     *
+     * @param type of fence
+     */
+    ItemFence type(LogType type);
+
+    /**
+     * Get the type of this fence
+     *
+     * @return type of fence
+     */
+    LogType type();
 }

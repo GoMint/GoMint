@@ -2,6 +2,8 @@ package io.gomint.server.inventory.item;
 
 import io.gomint.inventory.item.ItemType;
 import io.gomint.server.registry.RegisterInfo;
+import io.gomint.world.block.Block;
+import io.gomint.world.block.BlockWool;
 import io.gomint.world.block.data.BlockColor;
 
 /**
@@ -27,4 +29,10 @@ public class ItemWool extends ItemStack< io.gomint.inventory.item.ItemWool> impl
         return this;
     }
 
+    @Override
+    public Block block() {
+        BlockWool block = (BlockWool) super.block();
+        block.color(this.color());
+        return block;
+    }
 }

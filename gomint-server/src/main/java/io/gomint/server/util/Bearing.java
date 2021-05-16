@@ -84,7 +84,7 @@ public enum Bearing {
      */
     public static Bearing fromAngle( float angle ) {
         // Normalize angle
-        angle -= 90;
+        angle += 180;// Why -90?
         angle %= 360;
 
         if ( angle < 0 ) {

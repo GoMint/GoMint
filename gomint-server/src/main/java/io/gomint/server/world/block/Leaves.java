@@ -167,4 +167,25 @@ public class Leaves extends Block implements BlockLeaves {
         return LogType.valueOf(VARIANT.state(this).name());
     }
 
+    @Override
+    public BlockLeaves decay(boolean decay) {
+        UPDATE_FOR_DECAY.state(this,decay);
+        return this;
+    }
+
+    @Override
+    public boolean decay() {
+        return UPDATE_FOR_DECAY.state(this);
+    }
+
+    @Override
+    public BlockLeaves persistent(boolean persistent) {
+        PERSISTENT.state(this, persistent);
+        return this;
+    }
+
+    @Override
+    public boolean persistent() {
+        return PERSISTENT.state(this);
+    }
 }

@@ -7,7 +7,7 @@
 
 package io.gomint.world.block;
 
-import io.gomint.world.block.data.BlockColor;
+import io.gomint.world.block.data.GlassColor;
 
 /**
  * @author geNAZt
@@ -21,13 +21,13 @@ public interface BlockStainedGlass extends Block {
      *
      * @return color of this block
      */
-    BlockColor color();
+    GlassColor color();
 
     /**
      * Set the color of this block
      *
      * @param color which this block should be
      */
-    BlockStainedGlass color(BlockColor color );
+    BlockStainedGlass color(GlassColor color );
 
 }

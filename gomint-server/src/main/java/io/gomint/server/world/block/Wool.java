@@ -2,11 +2,15 @@ package io.gomint.server.world.block;
 
 import io.gomint.inventory.item.ItemShears;
 import io.gomint.inventory.item.ItemStack;
+import io.gomint.inventory.item.ItemWool;
 import io.gomint.server.registry.RegisterInfo;
 import io.gomint.server.world.block.state.BlockColorBlockState;
 import io.gomint.world.block.BlockType;
 import io.gomint.world.block.BlockWool;
 import io.gomint.world.block.data.BlockColor;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author geNAZt
@@ -60,4 +64,10 @@ public class Wool extends Block implements BlockWool {
         };
     }
 
+    @Override
+    public List<ItemStack<?>> drops(ItemStack<?> itemInHand) {
+        ItemWool item = ItemWool.create(1);
+        item.color(this.color());
+        return Collections.singletonList(item);
+    }
 }

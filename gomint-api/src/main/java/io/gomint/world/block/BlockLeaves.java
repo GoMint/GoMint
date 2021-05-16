@@ -31,4 +31,16 @@ public interface BlockLeaves extends Block {
      */
     LogType type();
 
+
+    // TODO: docs
+    BlockLeaves decay(boolean decay);
+
+    // TODO: docs
+    boolean decay();
+
+    // TODO: docs
+    BlockLeaves persistent(boolean persistent);
+
+    // TODO: docs
+    boolean persistent();
 }

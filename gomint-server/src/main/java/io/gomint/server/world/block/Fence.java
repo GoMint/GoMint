@@ -1,5 +1,7 @@
 package io.gomint.server.world.block;
 
+import com.google.common.collect.Lists;
+import io.gomint.inventory.item.ItemFence;
 import io.gomint.inventory.item.ItemStack;
 import io.gomint.server.world.block.helper.ToolPresets;
 import io.gomint.server.world.block.state.EnumBlockState;
@@ -8,6 +10,8 @@ import io.gomint.world.block.BlockType;
 
 import io.gomint.server.registry.RegisterInfo;
 import io.gomint.world.block.data.LogType;
+
+import java.util.List;
 
 /**
  * @author geNAZt
@@ -109,4 +113,9 @@ public class Fence extends Block implements BlockFence {
         return this;
     }
 
+    @Override
+    public List<ItemStack<?>> drops(ItemStack<?> itemInHand) {
+        ItemFence item = ItemFence.create(1).type(this.type());
+        return Lists.newArrayList(item);
+    }
 }

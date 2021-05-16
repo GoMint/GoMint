@@ -1,6 +1,7 @@
 package io.gomint.inventory.item;
 
 import io.gomint.GoMint;
+import io.gomint.world.block.data.LogType;
 
 /**
  * @author geNAZt
@@ -18,5 +19,33 @@ public interface ItemLeaves extends ItemStack<ItemLeaves> {
     static ItemLeaves create( int amount ) {
         return GoMint.instance().createItemStack( ItemLeaves.class, amount );
     }
+
+
+    /**
+     * Set the type of log
+     *
+     * @param type of log
+     */
+    ItemLeaves type(LogType type);
+
+    /**
+     * Get the type of this log
+     *
+     * @return type of log
+     */
+    LogType type();
+
+    // TODO: docs
+    ItemLeaves decay(boolean decay);
+
+    // TODO: docs
+    boolean decay();
+
+    // TODO: docs
+    ItemLeaves persistent(boolean persistent);
+
+    // TODO: docs
+    boolean persistent();
+
 
 }

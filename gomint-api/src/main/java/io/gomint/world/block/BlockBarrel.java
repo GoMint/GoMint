@@ -7,15 +7,24 @@
 
 package io.gomint.world.block;
 
+import io.gomint.world.block.data.Facing;
+
 /**
- * @author geNAZt
  * @author jihuayu
  * @version 1.0
- * @stability 3
  */
-public interface BlockComposter extends Block {
+public interface BlockBarrel extends Block {
+
+
     //TODO: docs
-    BlockComposter level(int level);
+    Facing face();
+
     //TODO: docs
-    int level();
+    BlockBarrel face(Facing value);
+
+    //TODO: docs
+    Boolean open();
+
+    //TODO: docs
+    BlockBarrel open(Boolean value);
 }

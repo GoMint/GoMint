@@ -7,13 +7,19 @@
 
 package io.gomint.server.world.block;
 
+import io.gomint.inventory.item.ItemStack;
+import io.gomint.math.Location;
+import io.gomint.math.Vector;
+import io.gomint.server.entity.EntityLiving;
 import io.gomint.server.entity.tileentity.BarrelTileEntity;
-import io.gomint.server.entity.tileentity.LecternTileEntity;
 import io.gomint.server.entity.tileentity.TileEntity;
 import io.gomint.server.registry.RegisterInfo;
+import io.gomint.server.world.block.state.BlockfaceBlockState;
+import io.gomint.server.world.block.state.BooleanBlockState;
 import io.gomint.taglib.NBTTagCompound;
-import io.gomint.world.block.BlockBarrier;
+import io.gomint.world.block.BlockBarrel;
 import io.gomint.world.block.BlockType;
+import io.gomint.world.block.data.Facing;
 
 /**
  * @author geNAZt
@@ -21,7 +27,9 @@ import io.gomint.world.block.BlockType;
  */
 // TODO: Proper impl
 @RegisterInfo( sId = "minecraft:barrel" )
-public class Barrel extends Block {
+public class Barrel extends Block implements BlockBarrel {
+    private static final BlockfaceBlockState DIRECTION = new BlockfaceBlockState(() -> new String[]{"direction"});
+    private static final BooleanBlockState OPEN = new BooleanBlockState(() -> new String[]{"open_bit"});
 
     @Override
     public long breakTime() {
@@ -59,4 +67,32 @@ public class Barrel extends Block {
         return this.tileEntities.construct(BarrelTileEntity.class, compound, this, this.items);
     }
 
+    @Override
+    public boolean beforePlacement(EntityLiving<?> entity, ItemStack<?> item, Facing face, Location location, Vector clickVector) {
+        DIRECTION.detectFromPlacement(this, entity, item, face, clickVector);
+        OPEN.detectFromPlacement(this, entity, item, face, clickVector);
+        return super.beforePlacement(entity, item, face, location, clickVector);
+    }
+
+    @Override
+    public Facing face() {
+        return DIRECTION.state(this);
+    }
+
+    @Override
+    public BlockBarrel face(Facing value) {
+        DIRECTION.state(this,value);
+        return this;
+    }
+
+    @Override
+    public Boolean open() {
+        return OPEN.state(this);
+    }
+
+    @Override
+    public BlockBarrel open(Boolean value) {
+        OPEN.state(this,value);
+        return this;
+    }
 }

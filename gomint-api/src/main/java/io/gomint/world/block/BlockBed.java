@@ -8,6 +8,7 @@
 package io.gomint.world.block;
 
 import io.gomint.world.block.data.BlockColor;
+import io.gomint.world.block.data.Direction;
 
 /**
  * @author geNAZt
@@ -53,4 +54,9 @@ public interface BlockBed extends Block {
      */
     BlockBed head(boolean value);
 
+    //TODO: docs
+    Direction face();
+
+    //TODO: docs
+    BlockBed face(Direction value);
 }

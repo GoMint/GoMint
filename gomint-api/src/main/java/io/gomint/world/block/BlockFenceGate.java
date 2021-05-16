@@ -11,6 +11,7 @@ import io.gomint.world.block.data.LogType;
 
 /**
  * @author geNAZt
+ * @author jihuayu
  * @version 1.0
  * @stability 3
  */
@@ -21,6 +22,15 @@ public interface BlockFenceGate extends BlockDirection<BlockFenceGate> {
      */
     BlockFenceGate toggle();
 
+
+    /**
+     * Set open for this fence gate
+     *
+     * @param open true if open, false if not
+     * @return block for chaining
+     */
+    BlockFenceGate open(boolean open);
+
     /**
      * Check if this fence gate is open
      *
@@ -28,8 +38,15 @@ public interface BlockFenceGate extends BlockDirection<BlockFenceGate> {
      */
     boolean open();
 
+
+    //TODO: docs
+    BlockFenceGate inWall(boolean inWall);
+
+    //TODO: docs
+    boolean inWall();
+
     /**
-     * Set the type of wood for this fence gate
+     * Set the type for this fence gate
      *
      * @param logType type of wood
      * @return block for chaining
@@ -37,9 +54,9 @@ public interface BlockFenceGate extends BlockDirection<BlockFenceGate> {
     BlockFenceGate type(LogType logType);
 
     /**
-     * Get the type of wood from which this fence gate has been made
+     * Get the type of fence gate from which this fence gate has been made
      *
-     * @return type of wood
+     * @return type of fence gate
      */
     LogType type();
 

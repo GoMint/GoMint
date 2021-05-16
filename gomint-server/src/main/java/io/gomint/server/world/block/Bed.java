@@ -126,6 +126,17 @@ public class Bed extends Block implements BlockBed {
     }
 
     @Override
+    public Direction face() {
+        return DIRECTION.state(this);
+    }
+
+    @Override
+    public BlockBed face(Direction value) {
+        DIRECTION.state(this,value);
+        return this;
+    }
+
+    @Override
     public boolean beforePlacement(EntityLiving<?> entity, ItemStack<?> item, Facing face, Location location, Vector clickVector) {
         // We need to check if we are placed on a solid block
         Block block = (Block) location.world().blockAt(location.toBlockPosition()).side(Facing.DOWN);
@@ -137,7 +148,8 @@ public class Bed extends Block implements BlockBed {
             if (!other.solid()) {
                 return false;
             }
-
+            DIRECTION.state(this,bearing.toDirection());
+            OCCUPIED.detectFromPlacement(this, entity, item, face, clickVector);
             Block replacingHead = other.side(Facing.UP);
             return replacingHead.canBeReplaced(item);
         }
@@ -151,6 +163,7 @@ public class Bed extends Block implements BlockBed {
         if (otherBlock != null) {
             Bed bed = otherBlock.blockType(Bed.class);
             bed.color(this.color());
+            bed.face(this.face());
             bed.head(true);
         }
 

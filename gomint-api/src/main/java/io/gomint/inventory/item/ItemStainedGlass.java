@@ -1,6 +1,7 @@
 package io.gomint.inventory.item;
 
 import io.gomint.GoMint;
+import io.gomint.world.block.data.GlassColor;
 
 /**
  * @author geNAZt
@@ -19,4 +20,18 @@ public interface ItemStainedGlass extends ItemStack<ItemStainedGlass> {
         return GoMint.instance().createItemStack( ItemStainedGlass.class, amount );
     }
 
+
+    /**
+     * Get the color of this stained glass
+     *
+     * @return color of this stained glass
+     */
+    GlassColor color();
+
+    /**
+     * Set the color of this stained glass
+     *
+     * @param color which this stained glass should have
+     */
+    ItemStainedGlass color(GlassColor color);
 }
